@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: #0a0a0b;
+    color: #ffffff;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #111113;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #2e2e31;
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #3e3e41;
+  }
+}
+
+@layer components {
+  .luxury-card {
+    @apply rounded-2xl bg-[#111113] border border-[#1e1e21] p-6;
+  }
+
+  .luxury-input {
+    @apply w-full px-4 py-3 rounded-xl bg-[#1a1a1d] border border-[#2e2e31] text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 transition-all;
+  }
+
+  .luxury-button {
+    @apply w-full px-6 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold hover:from-amber-400 hover:to-amber-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .luxury-button-secondary {
+    @apply w-full px-6 py-3 rounded-xl bg-[#1a1a1d] border border-[#2e2e31] text-white font-medium hover:bg-[#1e1e21] hover:border-zinc-600 transition-all duration-200;
+  }
+
+  .kpi-card {
+    @apply p-6 rounded-2xl bg-gradient-to-br from-[#111113] to-[#0f0f10] border border-[#1e1e21];
+  }
+
+  .status-badge {
+    @apply px-2.5 py-1 rounded-lg text-xs font-medium;
+  }
+
+  .status-badge-success {
+    @apply bg-emerald-500/10 text-emerald-400 border border-emerald-500/20;
+  }
+
+  .status-badge-warning {
+    @apply bg-amber-500/10 text-amber-400 border border-amber-500/20;
+  }
+
+  .status-badge-error {
+    @apply bg-rose-500/10 text-rose-400 border border-rose-500/20;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-amber-600;
+  }
+
+  .animate-pulse-slow {
+    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+}
