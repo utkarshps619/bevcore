@@ -10,6 +10,7 @@ import {
   Menu,
   X,
   ChevronDown,
+  Plus,
 } from 'lucide-react';
 import { useUserOutlets } from '../hooks/useOutlets';
 
@@ -20,16 +21,34 @@ const navigation = [
   { name: 'Recipes', href: '/recipes', icon: Wine },
 ];
 
+const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
+
 export function Layout() {
   const { user, signOut } = useAuth();
-  const { outlets } = useUserOutlets();
+  const { outlets, createOutlet } = useUserOutlets();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [outletDropdownOpen, setOutletDropdownOpen] = useState(false);
+  const [showOutletModal, setShowOutletModal] = useState(false);
+  const [outletFormData, setOutletFormData] = useState({ name: '', type: 'bar' });
+  const [creating, setCreating] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const handleCreateOutlet = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    const { error } = await createOutlet(outletFormData.name, outletFormData.type);
+    setCreating(false);
+    
+    if (!error) {
+      setShowOutletModal(false);
+      setOutletFormData({ name: '', type: 'bar' });
+      setOutletDropdownOpen(false);
+    }
   };
 
   return (
@@ -52,7 +71,7 @@ export function Layout() {
           {/* Logo */}
           <div className="flex h-16 items-center justify-between px-6 border-b border-[#1e1e21]">
             <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-champagne-400 to-champagne-600 flex items-center justify-center">
                 <Wine className="h-5 w-5 text-black" />
               </div>
               <span className="text-xl font-semibold text-white tracking-tight">BevCore</span>
@@ -73,7 +92,7 @@ export function Layout() {
                 className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-[#1a1a1d] hover:bg-[#1e1e21] transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <div className="h-2 w-2 rounded-full bg-champagne-500" />
                   <span className="text-sm font-medium text-white">
                     {outlets.length > 0 ? outlets[0].name : 'Select Outlet'}
                   </span>
@@ -94,6 +113,17 @@ export function Layout() {
                       {outlet.name}
                     </button>
                   ))}
+                  <div className="border-t border-[#2e2e31] my-2" />
+                  <button
+                    onClick={() => {
+                      setShowOutletModal(true);
+                      setOutletDropdownOpen(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm text-champagne-400 hover:bg-champagne-500/10 transition-colors flex items-center gap-2"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create New Outlet
+                  </button>
                 </div>
               )}
             </div>
@@ -109,7 +139,7 @@ export function Layout() {
                 className={({ isActive }) =>
                   `flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${
                     isActive
-                      ? 'bg-gradient-to-r from-amber-500/20 to-amber-500/5 text-amber-400 border border-amber-500/20'
+                      ? 'bg-gradient-to-r from-champagne-500/20 to-champagne-500/5 text-champagne-400 border border-champagne-500/20'
                       : 'text-zinc-400 hover:text-white hover:bg-[#1a1a1d]'
                   }`
                 }
@@ -159,7 +189,7 @@ export function Layout() {
               <Menu className="h-5 w-5" />
             </button>
             <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-champagne-400 to-champagne-600 flex items-center justify-center">
                 <Wine className="h-4 w-4 text-black" />
               </div>
               <span className="text-lg font-semibold text-white">BevCore</span>
@@ -173,6 +203,73 @@ export function Layout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Outlet Creation Modal */}
+      {showOutletModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowOutletModal(false)}
+          />
+          <div className="relative w-full max-w-md luxury-card">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">Create New Outlet</h2>
+              <button
+                onClick={() => setShowOutletModal(false)}
+                className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1a1a1d] transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateOutlet} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  Outlet Name
+                </label>
+                <input
+                  type="text"
+                  value={outletFormData.name}
+                  onChange={(e) => setOutletFormData({ ...outletFormData, name: e.target.value })}
+                  className="luxury-input"
+                  placeholder="e.g., Main Bar, Rooftop Lounge"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-2">
+                  Outlet Type
+                </label>
+                <select
+                  value={outletFormData.type}
+                  onChange={(e) => setOutletFormData({ ...outletFormData, type: e.target.value })}
+                  className="luxury-input"
+                >
+                  {outletTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowOutletModal(false)}
+                  className="luxury-button-secondary"
+                >
+                  Cancel
+                </button>
+                <button type="submit" disabled={creating} className="luxury-button">
+                  {creating ? 'Creating...' : 'Create Outlet'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
