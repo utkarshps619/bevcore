@@ -32,6 +32,7 @@ export function Layout() {
   const [showOutletModal, setShowOutletModal] = useState(false);
   const [outletFormData, setOutletFormData] = useState({ name: '', type: 'bar' });
   const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await signOut();
@@ -41,13 +42,18 @@ export function Layout() {
   const handleCreateOutlet = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreating(true);
+    setCreateError(null);
+    
     const { error } = await createOutlet(outletFormData.name, outletFormData.type);
     setCreating(false);
     
-    if (!error) {
+    if (error) {
+      setCreateError(error.message || 'Failed to create outlet');
+    } else {
       setShowOutletModal(false);
       setOutletFormData({ name: '', type: 'bar' });
       setOutletDropdownOpen(false);
+      setCreateError(null);
     }
   };
 
@@ -223,6 +229,12 @@ export function Layout() {
             </div>
 
             <form onSubmit={handleCreateOutlet} className="space-y-4">
+              {createError && (
+                <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
+                  {createError}
+                </div>
+              )}
+              
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
                   Outlet Name
