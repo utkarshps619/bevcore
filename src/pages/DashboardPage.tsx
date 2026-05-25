@@ -224,7 +224,7 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <KPICard
           title="Total Inventory Value"
-          value={`$${totalInventoryValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
+          value={`AED ${totalInventoryValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
           subtitle="Current stock value"
           icon={<Package className="h-6 w-6 text-amber-400" />}
           trend={{ value: 12.5, label: 'vs last month' }}
