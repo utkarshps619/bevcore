@@ -424,7 +424,7 @@ export function InventoryPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-white">
-                          `AED ${item.cost_per_unit.toFixed(2)}`
+                          {`AED ${item.cost_per_unit.toFixed(2)}`}
                         </span>
                       </td>
                       <td className="px-6 py-4">
