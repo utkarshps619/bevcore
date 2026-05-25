@@ -41,6 +41,7 @@ export interface Recipe {
   garnish: string;
   selling_price: number;
   cost: number;
+  image_url?: string;
   created_at: string;
 }
 
