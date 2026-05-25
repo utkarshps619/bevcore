@@ -346,7 +346,7 @@ export function DashboardPage() {
                   <div>
                     <p className="text-xs text-zinc-500 mb-1">Value</p>
                     <p className="text-xl font-bold text-white">
-                      ${totalValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                      AED ${totalValue.toLocaleString('en-US', { maximumFractionDigits: 0 })}
                     </p>
                   </div>
                 </div>
