@@ -20,13 +20,13 @@ export function useUserOutlets() {
 
     try {
       setLoading(true);
-
       const { data: userOutletsData, error: userOutletsError } = await supabase
         .from('user_outlets')
         .select('*')
         .eq('user_id', user.id);
 
       if (userOutletsError) throw userOutletsError;
+
       setUserOutlets(userOutletsData || []);
 
       if (userOutletsData && userOutletsData.length > 0) {
@@ -52,28 +52,22 @@ export function useUserOutlets() {
     fetchUserOutlets();
   }, [fetchUserOutlets]);
 
+  // UPDATED: Use RPC function instead of separate inserts
   const createOutlet = async (name: string, type: string) => {
     if (!user) return { error: new Error('Not authenticated') };
 
     try {
-      const { data: outlet, error: outletError } = await supabase
-        .from('outlets')
-        .insert({ name, type })
-        .select()
-        .single();
-
-      if (outletError) throw outletError;
-
-      const { error: userOutletError } = await supabase.from('user_outlets').insert({
-        user_id: user.id,
-        outlet_id: outlet.id,
-        role: 'manager',
+      const { data, error: rpcError } = await supabase.rpc('create_outlet_with_assignment', {
+        outlet_name: name,
+        outlet_type: type,
       });
 
-      if (userOutletError) throw userOutletError;
+      if (rpcError) throw rpcError;
 
+      // Refresh outlets list
       await fetchUserOutlets();
-      return { data: outlet, error: null };
+
+      return { data, error: null };
     } catch (err) {
       return { error: err instanceof Error ? err : new Error('Failed to create outlet') };
     }
