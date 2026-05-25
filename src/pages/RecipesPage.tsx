@@ -493,7 +493,7 @@ export function RecipesPage() {
                   <div>
                     <p className="text-xs text-zinc-500 mb-1">Price</p>
                     <p className="text-lg font-bold text-white">
-                      `AED ${recipe.selling_price.toFixed(2)}`
+                      {`AED ${recipe.selling_price.toFixed(2)}`}
                     </p>
                   </div>
                   <div>
@@ -634,7 +634,7 @@ export function RecipesPage() {
             <div className="flex gap-3 p-4 rounded-xl bg-[#0a0a0b]">
               <div className="flex-1 text-center">
                 <p className="text-xs text-zinc-500 mb-1">Cost</p>
-                <p className="text-lg font-bold text-white">`AED ${viewRecipe.selling_price.toFixed(2)}`</p>
+                <p className="text-lg font-bold text-white">{`AED ${viewRecipe.selling_price.toFixed(2)}`}</p>
               </div>
               <div className="w-px bg-[#1e1e21]" />
               <div className="flex-1 text-center">
