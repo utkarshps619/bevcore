@@ -90,14 +90,59 @@ function RecipeModal({ recipe, outlets, onSave, onClose }: RecipeModalProps) {
     cost: recipe?.cost || 0,
   });
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+const [imagePreview, setImagePreview] = useState<string | null>(recipe?.image_url || null);
+const [uploading, setUploading] = useState(false);
+const uploadImage = async (file: File): Promise<string | null> => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `${fileName}`;
 
+    const { error: uploadError } = await supabase.storage
+      .from('recipe-images')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('recipe-images')
+      .getPublicUrl(filePath);
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    return null;
+  }
+};
+
+const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (file) {
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+};
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const filteredIngredients = formData.ingredients.filter(
       (i) => i.name.trim() !== '' || i.amount.trim() !== ''
     );
-    setLoading(true);
-    await onSave({ ...formData, ingredients: filteredIngredients });
+   setLoading(true);
+    setUploading(true);
+
+    let imageUrl = recipe?.image_url || null;
+    
+    if (imageFile) {
+      imageUrl = await uploadImage(imageFile);
+    }
+
+    setUploading(false);
+    await onSave({ ...formData, ingredients: filteredIngredients, image_url: imageUrl });
     setLoading(false);
   };
 
@@ -167,6 +212,34 @@ function RecipeModal({ recipe, outlets, onSave, onClose }: RecipeModalProps) {
             </div>
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-zinc-300 mb-2">Recipe Photo</label>
+            {imagePreview && (
+              <div className="mb-3 relative">
+                <img 
+                  src={imagePreview} 
+                  alt="Recipe preview" 
+                  className="w-full h-48 object-cover rounded-xl"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setImageFile(null);
+                    setImagePreview(null);
+                  }}
+                  className="absolute top-2 right-2 p-2 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              className="luxury-input"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-2">
               <Wine className="h-4 w-4 inline mr-2" />
