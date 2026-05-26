@@ -11,6 +11,7 @@ import {
   X,
   ChevronDown,
   Plus,
+  Link2,
 } from 'lucide-react';
 import { useUserOutlets } from '../hooks/useOutlets';
 
@@ -19,6 +20,7 @@ const navigation = [
   { name: 'Inventory', href: '/inventory', icon: Package },
   { name: 'Shift Notes', href: '/shift-notes', icon: FileText },
   { name: 'Recipes', href: '/recipes', icon: Wine },
+  { name: 'POS Mapping', href: '/pos-mapping', icon: Link2 },
 ];
 
 const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
