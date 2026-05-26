@@ -39,42 +39,133 @@ interface Mapping {
 
 type FilterTab = 'unmapped' | 'beverages' | 'food' | 'all';
 
+// Comprehensive food keywords
 const FOOD_KEYWORDS = [
-  'steak', 'burger', 'fries', 'salad', 'soup', 'chicken', 'beef', 'lamb',
-  'fish', 'salmon', 'shrimp', 'prawn', 'lobster', 'crab', 'oyster',
-  'pasta', 'pizza', 'risotto', 'rice', 'noodle', 'bread', 'toast',
-  'egg', 'omelette', 'pancake', 'waffle', 'french toast',
-  'sandwich', 'wrap', 'panini', 'club', 'blt',
-  'nachos', 'hummus', 'guacamole', 'bruschetta', 'calamari',
-  'dessert', 'cake', 'ice cream', 'sorbet', 'cheesecake', 'brownie', 'tiramisu',
-  'truffle', 'foie gras', 'tartare', 'carpaccio', 'ceviche',
-  'wagyu', 'ribeye', 'tenderloin', 'sirloin', 'filet', 'chop',
-  'mac & cheese', 'mac and cheese', 'caesar', 'wedge',
-  'sliders', 'wings', 'spring roll', 'dim sum', 'dumpling',
-  'benedict', 'shakshuka', 'shakshouka', 'granola', 'porridge', 'muesli',
-  'fruit', 'berry', 'acai', 'yogurt',
-  'cheese', 'charcuterie', 'platter',
-  'kids', 'child', 'junior',
-  'buckaroo', 'angus', 'rack',
-  'mezze', 'fattoush', 'tabbouleh', 'kibbeh',
+  'steak', 'burger', 'fries', 'salad', 'soup', 'chicken', 'beef', 'lamb', 'pork', 'veal',
+  'fish', 'salmon', 'shrimp', 'prawn', 'lobster', 'crab', 'oyster', 'scallop', 'mussels', 'clams',
+  'pasta', 'pizza', 'risotto', 'rice', 'noodle', 'bread', 'toast', 'bagel', 'croissant', 'brioche',
+  'egg', 'omelette', 'pancake', 'waffle', 'french toast', 'crepe',
+  'sandwich', 'wrap', 'panini', 'club', 'blt', 'gyro', 'kebab', 'falafel', 'shawarma',
+  'nachos', 'hummus', 'guacamole', 'bruschetta', 'calamari', 'croquette', 'fritter', 'dumpling',
+  'dessert', 'cake', 'ice cream', 'sorbet', 'cheesecake', 'brownie', 'tiramisu', 'mousse', 'tart',
+  'truffle', 'foie gras', 'tartare', 'carpaccio', 'ceviche', 'crudo',
+  'wagyu', 'ribeye', 'tenderloin', 'sirloin', 'filet', 'chop', 'rack', 'brisket', 'short rib',
+  'mac & cheese', 'mac and cheese', 'caesar', 'wedge', 'caprese', 'niçoise',
+  'sliders', 'wings', 'spring roll', 'dim sum', 'pot sticker', 'gyoza', 'samosa',
+  'benedict', 'shakshuka', 'shakshouka', 'granola', 'porridge', 'muesli', 'acai bowl',
+  'fruit', 'berry', 'melon', 'watermelon', 'berry', 'yogurt', 'parfait',
+  'cheese', 'charcuterie', 'platter', 'board', 'antipasti', 'mezze', 'meze',
+  'kids', 'child', 'junior', 'children',
+  'buckaroo', 'angus', 'grass-fed', 'grass fed',
+  'mezze', 'fattoush', 'tabbouleh', 'kibbeh', 'kofta', 'shawarma', 'mansaf',
   'supplement', 'side', 'extra', 'add on', 'add-on',
-  'ird25', 'ird ',
+  'breakfast', 'brunch', 'lunch', 'dinner', 'supper',
+  'course', 'meal', 'menu', 'plat', 'entrée', 'appetizer', 'starter', 'main', 'first course',
+  'tasting', 'degustation',
+  'main courses', 'starters', 'sides', 'desserts', 'snacks/sandwich', 'snacks',
+  'international breakfast',
+  'open food',
+  'drw', 'drw2', 'drw3', 'degustation', 'tasting menu',
+  'ird', 'in room',
+];
+
+// Comprehensive beverage keywords
+const BEVERAGE_KEYWORDS = [
+  // Beer
+  'beer', 'lager', 'stout', 'ipa', 'ale', 'pilsner', 'heineken', 'corona', 'budweiser', 'guinness',
+  'carlsberg', 'peroni', 'amstel', 'chang', 'singha', 'model', 'pacifico', 'stella', 'coors',
+  'kronenbourg', 'tyskie', 'efes', 'tuborg', 'san miguel', 'tsingtao', 'asahi', 'kirin', 'sapporo',
+  
+  // Wine
+  'wine', 'cabernet', 'merlot', 'chardonnay', 'pinot', 'sauvignon', 'riesling', 'shiraz', 'syrah',
+  'tempranillo', 'barbera', 'sangiovese', 'vinho', 'vino', 'champagne', 'prosecco', 'cava',
+  'bordeaux', 'burgundy', 'rioja', 'tuscany', 'tuscán', 'barolo', 'brunello', 'nebbiolo',
+  'nebbiolo', 'grüner veltliner', 'gewürztraminer', 'muscat', 'port', 'sherry', 'madeira',
+  'vermouth', 'aperitif', 'dessert wine', 'sparkling', 'blanc', 'rouge', 'rosé', 'brut', 'sec',
+  'dry', 'sweet', 'demi-sec', 'doux',
+  
+  // Spirits
+  'vodka', 'gin', 'rum', 'whiskey', 'whisky', 'tequila', 'mezcal', 'brandy', 'cognac',
+  'armagnac', 'calvados', 'grappa', 'schnapps', 'aquavit', 'ouzo', 'raki', 'arak', 'pastis',
+  'ricard', 'pernod', 'absinth', 'absinthe', 'kirsch', 'sloe gin', 'baileys', 'amaretto',
+  'kahlúa', 'cointreau', 'triple sec', 'grand marnier', 'chartreuse', 'jägermeister',
+  'sambuca', 'disaronno', 'frangelico', 'malibu', 'midori', 'goldschläger',
+  
+  // Cocktails / Mixed drinks
+  'cocktail', 'margarita', 'mojito', 'negroni', 'manhattan', 'martini', 'daiquiri', 'mojito',
+  'cosmopolitan', 'caipirinha', 'pina colada', 'mai tai', 'zombie', 'sazerac', 'old fashioned',
+  'sidecar', 'stinger', 'gimlet', 'sour', 'collins', 'fizz', 'smash', 'punch', 'spritz',
+  'aperol', 'sangria', 'mimosa', 'bellini', 'kir', 'spritzer', 'long island',
+  'piña colada', 'hurricane', 'sex on the beach', 'blue lagoon', 'strawberry', 'peach',
+  'cocktail hour', 'happy hour', 'well drink', 'call drink', 'premium drink',
+  
+  // Coffee & Tea
+  'coffee', 'espresso', 'americano', 'cappuccino', 'latte', 'macchiato', 'mocha', 'cortado',
+  'ristretto', 'lungo', 'affogato', 'flat white', 'cortado', 'lungo', 'lungo',
+  'tea', 'black tea', 'green tea', 'white tea', 'oolong', 'pu-erh', 'herbal tea', 'chamomile',
+  'peppermint', 'green tea', 'jasmine', 'darjeeling', 'assam', 'ceylon', 'matcha', 'chai',
+  'latte', 'cappuccino', 'macchiato',
+  
+  // Non-alcoholic
+  'juice', 'orange juice', 'lemon juice', 'lime juice', 'apple juice', 'cranberry', 'grapefruit',
+  'pineapple juice', 'mango juice', 'passion fruit', 'peach juice', 'fresh juice', 'smoothie',
+  'soft drink', 'soda', 'cola', 'sprite', 'fanta', 'pepsi', 'coca', '7up', 'ginger ale',
+  'lemonade', 'iced tea', 'iced coffee', 'milkshake', 'shake', 'smoothie', 'acai',
+  'energy drink', 'redbull', 'red bull', 'gatorade', 'powerade', 'coconut water',
+  
+  // Water
+  'water', 'pellegrino', 'perrier', 'san pellegrino', 'acqua panna', 'evian', 'voss',
+  'fiji water', 'smart water', 'alkaline water', 'sparkling water', 'still water',
+  'mineral water', 'spring water', 'filtered water', 'bottled water', 'purified water',
+  
+  // Alcohol-free / Mocktails
+  'mocktail', 'virgin', 'alcohol-free', 'non-alcoholic', 'na drink', 'zero proof',
+  
+  // Brands & generic terms
+  'btl', 'bottle', 'draft', 'draught', 'on tap', 'glass', 'shot', 'double', 'pint',
+  'half pint', 'ml', 'cl', '50ml', '75ml', '100ml', '150ml', '250ml', '500ml', '750ml',
+  '1l', 'liter', 'litre',
+  'btl red', 'btl white', 'btl rosé', 'btl champagne',
+  'red wine', 'white wine', 'rose wine',
+  'open', 'house wine', 'house red', 'house white',
 ];
 
 const FOOD_EXACT = [
-  'food', 'open misc', 'cover charge', 'service charge',
+  'food', 'open misc', 'open food',
+  'cover charge', 'service charge', 'service',
   'corkage', 'valet', 'parking', 'cigar', 'cigarette',
-  'merchandise', 'gift card', 'voucher',
+  'merchandise', 'gift card', 'voucher', 'gift',
   'breakfast', 'main courses', 'starters', 'sides', 'desserts',
   'snacks/sandwich', 'snacks', 'international breakfast',
 ];
 
-function isLikelyFood(itemName: string): boolean {
-  const lower = itemName.toLowerCase();
-  if (FOOD_EXACT.some(f => lower === f)) return true;
-  if (FOOD_KEYWORDS.some(kw => lower.includes(kw))) return true;
-  if (lower.startsWith('packages(')) return true;
-  return false;
+const BEVERAGE_EXACT = [
+  'beverage', 'beverages',
+  'alcohol', 'alcoholic',
+  'btl', 'draft', 'draught',
+];
+
+function classifyItem(itemName: string): 'food' | 'beverage' | 'unclear' {
+  const lower = itemName.toLowerCase().trim();
+
+  // Exact matches (highest priority)
+  if (FOOD_EXACT.some(f => lower === f)) return 'food';
+  if (BEVERAGE_EXACT.some(b => lower === b)) return 'beverage';
+
+  // Keyword matches
+  const foodMatch = FOOD_KEYWORDS.some(kw => lower.includes(kw));
+  const beverageMatch = BEVERAGE_KEYWORDS.some(kw => lower.includes(kw));
+
+  // If both match, beverage takes priority (e.g., "beer bread" → beverage)
+  if (beverageMatch) return 'beverage';
+  if (foodMatch) return 'food';
+
+  // Pattern matches
+  if (lower.startsWith('packages(')) return 'food';
+  if (lower.match(/\d+ml|ml\s|cl\s|\d+cl/i)) return 'beverage'; // Drink sizes
+  if (lower.match(/btl|bottle|draft|draught|on tap|pint|shot/i)) return 'beverage';
+
+  return 'unclear';
 }
 
 export function POSMappingPage() {
@@ -90,7 +181,7 @@ export function POSMappingPage() {
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [bulkProcessing, setBulkProcessing] = useState(false);
-  const [autoProcessing, setAutoProcessing] = useState(false);
+  const [classifyProcessing, setClassifyProcessing] = useState(false);
 
   useEffect(() => { loadData(); }, []);
 
@@ -149,7 +240,38 @@ export function POSMappingPage() {
 
   function showSuccess(msg: string) {
     setSuccessMessage(msg);
-    setTimeout(() => setSuccessMessage(null), 2500);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  }
+
+  async function classifyAllRemaining() {
+    setClassifyProcessing(true);
+    const unmapped = posItems.filter((i) => !getMappingForItem(i.item_name));
+
+    let beverages = 0, food = 0, unclear = 0;
+
+    for (const item of unmapped) {
+      const classification = classifyItem(item.item_name);
+      
+      if (classification === 'unclear') {
+        unclear++;
+        continue;
+      }
+
+      const isBeverage = classification === 'beverage';
+      await saveMapping(item, null, isBeverage);
+      
+      if (isBeverage) beverages++;
+      else food++;
+    }
+
+    await refreshMappings();
+    setClassifyProcessing(false);
+    
+    const msg = unclear > 0 
+      ? `Classified: ${beverages} beverages, ${food} food. ${unclear} items need review.`
+      : `Classified: ${beverages} beverages, ${food} food. Done!`;
+    
+    showSuccess(msg);
   }
 
   async function markSingleAsFood(posItem: POSItem) {
@@ -189,21 +311,6 @@ export function POSMappingPage() {
     setSelectedItems(new Set());
     setBulkProcessing(false);
     showSuccess(`${items.length} items → Beverage`);
-  }
-
-  async function autoCategorizeFoodItems() {
-    setAutoProcessing(true);
-    let count = 0;
-    const unmapped = posItems.filter((i) => !getMappingForItem(i.item_name));
-    for (const item of unmapped) {
-      if (isLikelyFood(item.item_name)) {
-        await saveMapping(item, null, false);
-        count++;
-      }
-    }
-    await refreshMappings();
-    setAutoProcessing(false);
-    showSuccess(`Auto-categorized ${count} food items`);
   }
 
   function toggleItem(itemName: string) {
@@ -259,10 +366,10 @@ export function POSMappingPage() {
           <p className="text-zinc-400 mt-1 font-sans text-sm">Map Avero POS items to BevCore recipes. Mark non-beverages as food to exclude from pour cost.</p>
         </div>
         {stats.unmapped > 0 && (
-          <button onClick={autoCategorizeFoodItems} disabled={autoProcessing}
+          <button onClick={classifyAllRemaining} disabled={classifyProcessing}
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-champagne-500 to-champagne-600 text-black font-sans font-semibold text-sm hover:from-champagne-400 hover:to-champagne-500 transition-all disabled:opacity-50 shadow-lg shadow-champagne-900/20">
-            {autoProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {autoProcessing ? 'Processing...' : 'Auto-Detect Food Items'}
+            {classifyProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+            {classifyProcessing ? 'Classifying...' : 'Auto-Classify All'}
           </button>
         )}
       </div>
