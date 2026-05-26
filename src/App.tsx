@@ -6,6 +6,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { InventoryPage } from './pages/InventoryPage';
 import { ShiftNotesPage } from './pages/ShiftNotesPage';
 import { RecipesPage } from './pages/RecipesPage';
+import { POSMappingPage } from './pages/POSMappingPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="shift-notes" element={<ShiftNotesPage />} />
         <Route path="recipes" element={<RecipesPage />} />
+        <Route path="pos-mapping" element={<POSMappingPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
