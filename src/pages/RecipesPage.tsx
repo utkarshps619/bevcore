@@ -498,6 +498,15 @@ export function RecipesPage() {
                 key={recipe.id}
                 className="luxury-card hover:border-[#2e2e31] transition-all group"
               >
+               {recipe.image_url && (
+                  <div className="mb-4">
+                    <img 
+                      src={recipe.image_url} 
+                      alt={recipe.name}
+                      className="w-full h-48 object-cover rounded-xl"
+                    />
+                  </div>
+                )}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-white mb-1">{recipe.name}</h3>
@@ -652,6 +661,15 @@ export function RecipesPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {viewRecipe.image_url && (
+              <div className="mb-6">
+                <img 
+                  src={viewRecipe.image_url} 
+                  alt={viewRecipe.name}
+                  className="w-full h-64 object-cover rounded-xl"
+                />
+              </div>
+            )}
 
             {viewRecipe.ingredients.length > 0 && (
               <div className="mb-6">
