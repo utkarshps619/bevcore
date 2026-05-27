@@ -4,7 +4,6 @@ export interface Outlet {
   type: string;
   created_at: string;
 }
-
 export interface InventoryItem {
   id: string;
   outlet_id: string;
@@ -17,7 +16,6 @@ export interface InventoryItem {
   created_at: string;
   updated_at: string;
 }
-
 export interface ShiftNote {
   id: string;
   outlet_id: string;
@@ -29,7 +27,6 @@ export interface ShiftNote {
   created_by: string | null;
   created_at: string;
 }
-
 export interface Recipe {
   id: string;
   outlet_id: string;
@@ -42,9 +39,11 @@ export interface Recipe {
   selling_price: number;
   cost: number;
   image_url?: string;
+  calculated_cost?: number | null;
+  cost_coverage?: number | null;
+  uncosted_ingredients?: string[] | null;
   created_at: string;
 }
-
 export interface UserOutlet {
   id: string;
   user_id: string;
@@ -52,5 +51,4 @@ export interface UserOutlet {
   role: string;
   created_at: string;
 }
-
 export type StockStatus = 'in-stock' | 'low-stock' | 'out-of-stock';
