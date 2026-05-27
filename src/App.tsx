@@ -8,6 +8,7 @@ import { ShiftNotesPage } from './pages/ShiftNotesPage';
 import { RecipesPage } from './pages/RecipesPage';
 import { POSMappingPage } from './pages/POSMappingPage';
 import { RecipeImportPage } from './pages/RecipeImportPage';
+import { IngredientImportPage } from './pages/IngredientImportPage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -50,6 +51,7 @@ function AppRoutes() {
         <Route path="recipes" element={<RecipesPage />} />
         <Route path="pos-mapping" element={<POSMappingPage />} />
         <Route path="recipe-import" element={<RecipeImportPage />} />
+        <Route path="ingredient-import" element={<IngredientImportPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>
       </Routes>
