@@ -118,7 +118,6 @@ export function RecipeImportPage() {
         recipes.map((r) => ({
           name: r.name,
           category: r.category,
-          outlet_id: r.outlet_id,
           ingredients: r.ingredients,
           recipe_cost: r.recipe_cost,
           selling_price: r.selling_price,
