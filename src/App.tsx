@@ -10,6 +10,7 @@ import { POSMappingPage } from './pages/POSMappingPage';
 import { RecipeImportPage } from './pages/RecipeImportPage';
 import { IngredientImportPage } from './pages/IngredientImportPage';
 import { IngredientsPage } from './pages/IngredientsPage';
+import { PourCostDashboard } from './pages/PourCostDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -54,6 +55,7 @@ function AppRoutes() {
         <Route path="ingredients" element={<IngredientsPage />} />
         <Route path="recipe-import" element={<RecipeImportPage />} />
         <Route path="ingredient-import" element={<IngredientImportPage />} />
+        <Route path="pour-cost" element={<PourCostDashboard />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Route>
       </Routes>
