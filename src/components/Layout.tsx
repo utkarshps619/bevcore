@@ -13,6 +13,7 @@ import {
   Plus,
   Link2,
   Upload,
+  TrendingUp,
 } from 'lucide-react';
 import { useUserOutlets } from '../hooks/useOutlets';
 
@@ -25,6 +26,7 @@ const navigation = [
   { name: 'Ingredients', href: '/ingredients', icon: Package },
   { name: 'Import Recipes', href: '/recipe-import', icon: Upload },
   { name: 'Import Ingredients', href: '/ingredient-import', icon: Upload },
+  { name: 'Pour Cost', href: '/pour-cost', icon: TrendingUp },
 ];
 
 const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
