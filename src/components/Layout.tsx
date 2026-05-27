@@ -23,6 +23,7 @@ const navigation = [
   { name: 'Recipes', href: '/recipes', icon: Wine },
   { name: 'POS Mapping', href: '/pos-mapping', icon: Link2 },
   { name: 'Import Recipes', href: '/recipe-import', icon: Upload },
+  { name: 'Import Ingredients', href: '/ingredient-import', icon: Upload },
 ];
 
 const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
