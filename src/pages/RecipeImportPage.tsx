@@ -1,297 +1,288 @@
 import { useState } from 'react';
+import * as XLSX from 'xlsx';
+import { Upload, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Upload, CheckCircle2, AlertCircle, Loader2, Download, Eye } from 'lucide-react';
 
 interface ParsedRecipe {
   name: string;
-  category: string;
-  base_spirit: string;
-  ingredients: Array<{ name: string; quantity: number; unit: string; cost: number }>;
+  ingredients: string[];
   recipe_cost: number;
   selling_price: number;
-  glass_type: string;
   method: string;
+  glass_type: string;
   garnish: string;
   loss_factor: number;
-  notes: string;
+  category: string;
+  outlet_id: string;
+}
+
+interface ImportResult {
+  success: boolean;
+  inserted: number;
+  total: number;
+  errors: string[];
 }
 
 export function RecipeImportPage() {
   const [file, setFile] = useState<File | null>(null);
-  const [parsing, setParsing] = useState(false);
+  const [recipes, setRecipes] = useState<ParsedRecipe[]>([]);
+  const [showPreview, setShowPreview] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [parsedRecipes, setParsedRecipes] = useState<ParsedRecipe[]>([]);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [parseError, setParseError] = useState<string | null>(null);
 
-  async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (!selectedFile) return;
 
-    setFile(f);
-    setParsedRecipes([]);
-    setError(null);
+    setFile(selectedFile);
+    setResult(null);
+    setParseError(null);
+    setRecipes([]);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+
+        // Read first sheet (clean format)
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
+
+        if (!rows || rows.length < 2) {
+          setParseError('No data found in file.');
+          return;
+        }
+
+        const parsed: ParsedRecipe[] = [];
+
+        // Row 0 = headers, start from row 1
+        for (let i = 1; i < rows.length; i++) {
+          const row = rows[i];
+          if (!row || !row[0]) continue;
+
+          const name = String(row[0] || '').trim();
+          const ingredientsRaw = String(row[1] || '').trim();
+          const cost = parseFloat(String(row[2] || '0'));
+          const selling = parseFloat(String(row[3] || '0'));
+          const method = String(row[4] || '').trim();
+          const glass = String(row[5] || '').trim();
+          const garnish = String(row[6] || '').trim();
+          const lossFactor = parseFloat(String(row[7] || '0.05'));
+
+          if (!name || isNaN(cost) || isNaN(selling)) continue;
+
+          // Split ingredients by comma
+          const ingredients = ingredientsRaw
+            .split(',')
+            .map((ing) => ing.trim())
+            .filter(Boolean);
+
+          parsed.push({
+            name,
+            ingredients,
+            recipe_cost: cost,
+            selling_price: selling,
+            method,
+            glass_type: glass,
+            garnish,
+            loss_factor: isNaN(lossFactor) ? 0.05 : lossFactor,
+            category: 'cocktail',
+            outlet_id: 'default',
+          });
+        }
+
+        if (parsed.length === 0) {
+          setParseError('No valid recipes found. Check file format.');
+          return;
+        }
+
+        setRecipes(parsed);
+      } catch (err) {
+        setParseError('Failed to parse file: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      }
+    };
+
+    reader.readAsArrayBuffer(selectedFile);
+  };
+
+  const handleImport = async () => {
+    if (!recipes.length) return;
+    setImporting(true);
     setResult(null);
 
     try {
-      setParsing(true);
-
-      // Dynamically import xlsx library
-      const response = await fetch('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
-      const script = await response.text();
-      
-      // Create a function to parse Excel in browser
-      const recipes = await parseExcelFile(f);
-      setParsedRecipes(recipes);
-
-    } catch (err: any) {
-      setError(err.message || 'Failed to parse Excel file');
-    } finally {
-      setParsing(false);
-    }
-  }
-
-  async function parseExcelFile(file: File): Promise<ParsedRecipe[]> {
-    // This is a simplified parser - in production you'd use the xlsx library properly
-    // For now, we'll use a hardcoded dataset that matches the user's Excel structure
-    return [
-      {
-        name: 'Tanqueray Martini',
-        category: 'Martini',
-        base_spirit: 'Tanqueray',
-        ingredients: [
-          { name: 'Tanqueray', quantity: 60, unit: 'ml', cost: 11.37 },
-          { name: 'Cinzano Extra Dry', quantity: 20, unit: 'ml', cost: 1.68 },
-        ],
-        recipe_cost: 13.70,
-        selling_price: 80,
-        glass_type: 'Nick & Nora Coupette',
-        method: 'Stir and Strain',
-        garnish: 'Lemon Peel or Olives',
-        loss_factor: 0.05,
-        notes: 'Can be made Dirty (add 20ml Olive Brine)',
-      },
-      {
-        name: 'Ketel One Martini',
-        category: 'Martini',
-        base_spirit: 'Ketel One',
-        ingredients: [
-          { name: 'Ketel One', quantity: 60, unit: 'ml', cost: 14.81 },
-          { name: 'Cinzano Extra Dry', quantity: 20, unit: 'ml', cost: 1.68 },
-        ],
-        recipe_cost: 17.32,
-        selling_price: 80,
-        glass_type: 'Nick & Nora Coupette',
-        method: 'Stir and Strain',
-        garnish: 'Lemon Peel or Olives',
-        loss_factor: 0.05,
-        notes: 'Can be made Dirty (add 20ml Olive Brine)',
-      },
-    ];
-  }
-
-  async function handleImport() {
-    if (parsedRecipes.length === 0) {
-      setError('No recipes to import');
-      return;
-    }
-
-    setImporting(true);
-    setError(null);
-
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      const response = await fetch(
-        'https://cnyuyotawfiflmjksemg.supabase.co/functions/v1/import-recipes-from-excel',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            recipes: parsedRecipes,
-          }),
-        }
+      const { error } = await supabase.from('recipes').insert(
+        recipes.map((r) => ({
+          name: r.name,
+          category: r.category,
+          outlet_id: r.outlet_id,
+          ingredients: r.ingredients,
+          recipe_cost: r.recipe_cost,
+          selling_price: r.selling_price,
+          method: r.method,
+          glass_type: r.glass_type,
+          garnish: r.garnish,
+          loss_factor: r.loss_factor,
+        }))
       );
 
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(data.error || 'Import failed');
+      if (error) {
+        setResult({
+          success: false,
+          inserted: 0,
+          total: recipes.length,
+          errors: [error.message],
+        });
+      } else {
+        setResult({
+          success: true,
+          inserted: recipes.length,
+          total: recipes.length,
+          errors: [],
+        });
       }
-
-      setResult(data);
-      setFile(null);
-      setParsedRecipes([]);
-
-    } catch (err: any) {
-      setError(err.message || 'Import failed');
+    } catch (err) {
+      setResult({
+        success: false,
+        inserted: 0,
+        total: recipes.length,
+        errors: [err instanceof Error ? err.message : 'Unknown error'],
+      });
     } finally {
       setImporting(false);
     }
-  }
+  };
 
   return (
-    <div className="space-y-6 max-w-4xl">
-      <div>
-        <h1 className="text-3xl font-semibold text-white">Import Cocktail Recipes</h1>
-        <p className="text-zinc-400 mt-1 font-sans text-sm">
-          Upload your Master Bar Bible Excel file to import all cocktail recipes with costs
+    <div className="max-w-3xl mx-auto">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'Playfair Display, serif' }}>
+          Import Cocktail Recipes
+        </h1>
+        <p className="text-zinc-400 mt-2">
+          Upload your clean recipe Excel file to import all cocktail recipes with costs
         </p>
       </div>
 
-      {/* Upload Section */}
-      {!result && (
-        <div className="luxury-card space-y-4">
-          <div>
-            <label className="block text-sm font-sans font-medium text-zinc-300 mb-3">
-              Select Excel File
-            </label>
-            <div className="relative">
-              <input
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={handleFileSelect}
-                disabled={parsing || importing}
-                className="absolute inset-0 opacity-0 cursor-pointer"
-              />
-              <div className="border-2 border-dashed border-[#2a2a2d] rounded-xl p-8 text-center hover:border-champagne-500/50 transition-colors cursor-pointer">
-                <Upload className="h-8 w-8 text-zinc-500 mx-auto mb-2" />
-                <p className="text-white font-sans font-medium">
-                  {file ? file.name : 'Click to upload Excel file'}
-                </p>
-                <p className="text-xs text-zinc-500 mt-1 font-sans">
-                  {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : 'Maximum 50 MB'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Parse Status */}
-          {parsing && (
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-              <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
-              <span className="text-sm font-sans text-blue-400">Parsing Excel file...</span>
-            </div>
-          )}
-
-          {/* Preview Section */}
-          {parsedRecipes.length > 0 && !parsing && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-sans font-medium text-zinc-300">
-                  Ready to import: <span className="text-champagne-400">{parsedRecipes.length}</span> recipes
+      <div className="luxury-card space-y-6">
+        {/* File Upload */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-300 mb-3">
+            Select Excel File
+          </label>
+          <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-zinc-700 rounded-xl cursor-pointer hover:border-amber-500/50 transition-colors bg-[#0a0a0b]">
+            <Upload className="h-8 w-8 text-zinc-500 mb-3" />
+            {file ? (
+              <>
+                <span className="text-white font-medium">{file.name}</span>
+                <span className="text-zinc-500 text-sm mt-1">
+                  {(file.size / 1024 / 1024).toFixed(2)} MB
                 </span>
-                <button
-                  onClick={() => setPreviewOpen(!previewOpen)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-sans font-medium bg-[#1a1a1d] text-zinc-400 border border-[#2e2e31] hover:text-white transition-colors"
-                >
-                  <Eye className="h-3 w-3" />
-                  {previewOpen ? 'Hide' : 'Preview'}
-                </button>
-              </div>
+              </>
+            ) : (
+              <>
+                <span className="text-zinc-400">Click to upload Excel file</span>
+                <span className="text-zinc-600 text-sm mt-1">.xlsx or .xls</span>
+              </>
+            )}
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+          </label>
+        </div>
 
-              {previewOpen && (
-                <div className="max-h-96 overflow-y-auto rounded-xl bg-[#0a0a0b] p-4 space-y-2 border border-[#2a2a2d]">
-                  {parsedRecipes.map((recipe, idx) => (
-                    <div key={idx} className="text-xs font-sans text-zinc-400 border-b border-[#1e1e21] pb-2 last:border-0">
-                      <p className="text-white font-medium">{recipe.name}</p>
-                      <p className="text-zinc-500">
-                        Cost: {recipe.recipe_cost.toFixed(2)} AED | Selling: {recipe.selling_price} AED
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
+        {/* Parse Error */}
+        {parseError && (
+          <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
+            {parseError}
+          </div>
+        )}
 
+        {/* Preview */}
+        {recipes.length > 0 && (
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-zinc-300 text-sm">
+                Ready to import: <span className="text-amber-400 font-semibold">{recipes.length} recipes</span>
+              </span>
               <button
-                onClick={handleImport}
-                disabled={importing}
-                className="w-full flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-gradient-to-r from-champagne-500 to-champagne-600 text-black font-sans font-semibold text-sm hover:from-champagne-400 hover:to-champagne-500 transition-all disabled:opacity-50 shadow-lg shadow-champagne-900/20"
+                onClick={() => setShowPreview(!showPreview)}
+                className="flex items-center gap-2 text-sm text-zinc-400 hover:text-white transition-colors"
               >
-                {importing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Importing Recipes...
-                  </>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Import {parsedRecipes.length} Recipes
-                  </>
-                )}
+                {showPreview ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPreview ? 'Hide' : 'Preview'}
               </button>
             </div>
-          )}
 
-          {error && (
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-              <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-              <span className="text-sm font-sans text-red-400">{error}</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Result Section */}
-      {result && (
-        <div className="luxury-card space-y-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="h-6 w-6 text-emerald-400 flex-shrink-0" />
-            <div>
-              <h2 className="text-lg font-semibold text-white">Import Complete</h2>
-              <p className="text-sm text-zinc-400 mt-1 font-sans">
-                Successfully imported cocktail recipes into your database
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-4">
-            <div className="kpi-card">
-              <p className="text-xs font-sans text-zinc-500 uppercase tracking-wider">Imported</p>
-              <p className="text-2xl font-semibold mt-1 text-emerald-400">{result.inserted}</p>
-            </div>
-            <div className="kpi-card">
-              <p className="text-xs font-sans text-zinc-500 uppercase tracking-wider">Errors</p>
-              <p className={`text-2xl font-semibold mt-1 ${result.errors > 0 ? 'text-red-400' : 'text-white'}`}>
-                {result.errors}
-              </p>
-            </div>
-            <div className="kpi-card">
-              <p className="text-xs font-sans text-zinc-500 uppercase tracking-wider">Total</p>
-              <p className="text-2xl font-semibold mt-1 text-white">{result.total}</p>
-            </div>
-          </div>
-
-          {result.errorDetails && result.errorDetails.length > 0 && (
-            <div className="rounded-xl bg-red-500/5 border border-red-500/20 p-4">
-              <p className="text-xs font-sans text-red-400 font-medium mb-2">Errors:</p>
-              <div className="space-y-1">
-                {result.errorDetails.map((err: string, idx: number) => (
-                  <p key={idx} className="text-xs font-sans text-red-400/80">
-                    • {err}
-                  </p>
+            {showPreview && (
+              <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                {recipes.map((recipe, idx) => (
+                  <div key={idx} className="p-3 rounded-lg bg-[#0a0a0b] border border-zinc-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-white text-sm font-medium">{recipe.name}</span>
+                      <span className="text-amber-400 text-sm">
+                        Cost: {recipe.recipe_cost.toFixed(2)} AED | Selling: {recipe.selling_price} AED
+                      </span>
+                    </div>
+                    <p className="text-zinc-500 text-xs mt-1 truncate">
+                      {recipe.ingredients.slice(0, 4).join(', ')}
+                      {recipe.ingredients.length > 4 ? ` +${recipe.ingredients.length - 4} more` : ''}
+                    </p>
+                  </div>
                 ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
 
+        {/* Import Button */}
+        {recipes.length > 0 && !result && (
           <button
-            onClick={() => {
-              setResult(null);
-              setFile(null);
-              setParsedRecipes([]);
-            }}
-            className="w-full px-5 py-2.5 rounded-xl bg-[#1a1a1d] border border-[#2e2e31] text-white font-sans font-medium text-sm hover:bg-[#2a2a2d] transition-all"
+            onClick={handleImport}
+            disabled={importing}
+            className="luxury-button w-full"
           >
-            Import More Recipes
+            {importing ? 'Importing...' : `Import ${recipes.length} Recipes`}
           </button>
-        </div>
-      )}
+        )}
+
+        {/* Result */}
+        {result && (
+          <div
+            className={`p-4 rounded-xl border ${
+              result.success
+                ? 'bg-emerald-500/10 border-emerald-500/20'
+                : 'bg-rose-500/10 border-rose-500/20'
+            }`}
+          >
+            <div className="flex items-center gap-3 mb-2">
+              {result.success ? (
+                <CheckCircle className="h-5 w-5 text-emerald-400" />
+              ) : (
+                <XCircle className="h-5 w-5 text-rose-400" />
+              )}
+              <span className={result.success ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>
+                {result.success
+                  ? `Successfully imported ${result.inserted} recipes`
+                  : `Import failed`}
+              </span>
+            </div>
+            {result.errors.length > 0 && (
+              <ul className="text-rose-400 text-sm space-y-1 mt-2">
+                {result.errors.map((err, i) => (
+                  <li key={i}>• {err}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
