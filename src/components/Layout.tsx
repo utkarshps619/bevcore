@@ -24,6 +24,7 @@ const navigation = [
   { name: 'POS Mapping', href: '/pos-mapping', icon: Link2 },
   { name: 'Import Recipes', href: '/recipe-import', icon: Upload },
   { name: 'Import Ingredients', href: '/ingredient-import', icon: Upload },
+  { name: 'Ingredients', href: '/ingredients', icon: Package },
 ];
 
 const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
