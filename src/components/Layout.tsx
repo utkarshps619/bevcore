@@ -22,9 +22,9 @@ const navigation = [
   { name: 'Shift Notes', href: '/shift-notes', icon: FileText },
   { name: 'Recipes', href: '/recipes', icon: Wine },
   { name: 'POS Mapping', href: '/pos-mapping', icon: Link2 },
+  { name: 'Ingredients', href: '/ingredients', icon: Package },
   { name: 'Import Recipes', href: '/recipe-import', icon: Upload },
   { name: 'Import Ingredients', href: '/ingredient-import', icon: Upload },
-  { name: 'Ingredients', href: '/ingredients', icon: Package },
 ];
 
 const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
