@@ -2,9 +2,32 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useUserOutlets } from '../hooks/useOutlets';
 import type { Recipe } from '../types';
-import { Wine, Plus, Search, X, CreditCard as Edit2, Trash2, DollarSign, Users } from 'lucide-react';
+import { Wine, Plus, Search, X, CreditCard as Edit2, Trash2, DollarSign, RefreshCw, AlertCircle } from 'lucide-react';
 
 const categories = ['cocktail', 'mocktail', 'spirit', 'wine', 'beer', 'other'];
+
+// Extends the base Recipe type with the new calculated cost fields
+interface RecipeWithCost extends Recipe {
+  calculated_cost?: number | null;
+  cost_coverage?: number | null;
+  uncosted_ingredients?: string[] | null;
+}
+
+// Returns a Tailwind color class for the coverage bar fill
+function coverageFillClass(pct: number | null | undefined): string {
+  if (pct == null) return 'bg-zinc-600';
+  if (pct >= 90) return 'bg-emerald-500';
+  if (pct >= 70) return 'bg-amber-500';
+  return 'bg-rose-500';
+}
+
+// Returns a Tailwind text color class for coverage label
+function coverageTextClass(pct: number | null | undefined): string {
+  if (pct == null) return 'text-zinc-500';
+  if (pct >= 90) return 'text-emerald-400';
+  if (pct >= 70) return 'text-amber-400';
+  return 'text-rose-400';
+}
 
 interface IngredientInputProps {
   ingredients: { name: string; amount: string }[];
@@ -71,7 +94,7 @@ function IngredientInput({ ingredients, onChange }: IngredientInputProps) {
 }
 
 interface RecipeModalProps {
-  recipe: Recipe | null;
+  recipe: RecipeWithCost | null;
   outlets: { id: string; name: string }[];
   onSave: (data: Partial<Recipe>) => Promise<void>;
   onClose: () => void;
@@ -91,64 +114,61 @@ function RecipeModal({ recipe, outlets, onSave, onClose }: RecipeModalProps) {
   });
   const [loading, setLoading] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-const [imagePreview, setImagePreview] = useState<string | null>(recipe?.image_url || null);
-const [uploading, setUploading] = useState(false);
-const uploadImage = async (file: File): Promise<string | null> => {
-  try {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Math.random()}.${fileExt}`;
-    const filePath = `${fileName}`;
+  const [imagePreview, setImagePreview] = useState<string | null>(recipe?.image_url || null);
+  const [uploading, setUploading] = useState(false);
 
-    const { error: uploadError } = await supabase.storage
-      .from('recipe-images')
-      .upload(filePath, file);
+  const uploadImage = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
 
-    if (uploadError) throw uploadError;
+      const { error: uploadError } = await supabase.storage
+        .from('recipe-images')
+        .upload(fileName, file);
 
-    const { data } = supabase.storage
-      .from('recipe-images')
-      .getPublicUrl(filePath);
+      if (uploadError) throw uploadError;
 
-    return data.publicUrl;
-  } catch (error) {
-    console.error('Error uploading image:', error);
-    return null;
-  }
-};
+      const { data } = supabase.storage
+        .from('recipe-images')
+        .getPublicUrl(fileName);
 
-const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (file) {
-    setImageFile(file);
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImagePreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-  }
-};
+      return data.publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setImagePreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const filteredIngredients = formData.ingredients.filter(
       (i) => i.name.trim() !== '' || i.amount.trim() !== ''
     );
-   setLoading(true);
+    setLoading(true);
     setUploading(true);
 
     let imageUrl = recipe?.image_url || null;
-    
-    if (imageFile) {
-      imageUrl = await uploadImage(imageFile);
-    }
+    if (imageFile) imageUrl = await uploadImage(imageFile);
 
     setUploading(false);
     await onSave({ ...formData, ingredients: filteredIngredients, image_url: imageUrl });
     setLoading(false);
   };
 
-  const margin = formData.selling_price > 0
-    ? ((formData.selling_price - formData.cost) / formData.selling_price) * 100
-    : 0;
+  const margin =
+    formData.selling_price > 0
+      ? ((formData.selling_price - formData.cost) / formData.selling_price) * 100
+      : 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto">
@@ -216,17 +236,14 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
             <label className="block text-sm font-medium text-zinc-300 mb-2">Recipe Photo</label>
             {imagePreview && (
               <div className="mb-3 relative">
-                <img 
-                  src={imagePreview} 
-                  alt="Recipe preview" 
+                <img
+                  src={imagePreview}
+                  alt="Recipe preview"
                   className="w-full h-48 object-cover rounded-xl"
                 />
                 <button
                   type="button"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview(null);
-                  }}
+                  onClick={() => { setImageFile(null); setImagePreview(null); }}
                   className="absolute top-2 right-2 p-2 rounded-lg bg-black/50 text-white hover:bg-black/70 transition-colors"
                 >
                   <X className="h-4 w-4" />
@@ -240,6 +257,7 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               className="luxury-input"
             />
           </div>
+
           <div>
             <label className="block text-sm font-medium text-zinc-300 mb-2">
               <Wine className="h-4 w-4 inline mr-2" />
@@ -337,7 +355,7 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
               Cancel
             </button>
             <button type="submit" disabled={loading} className="luxury-button">
-              {loading ? 'Saving...' : recipe ? 'Update Recipe' : 'Add Recipe'}
+              {loading ? (uploading ? 'Uploading...' : 'Saving...') : recipe ? 'Update Recipe' : 'Add Recipe'}
             </button>
           </div>
         </form>
@@ -348,15 +366,17 @@ const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 
 export function RecipesPage() {
   const { outlets } = useUserOutlets();
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipes, setRecipes] = useState<RecipeWithCost[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedOutlet, setSelectedOutlet] = useState<string>('all');
-  const [modalRecipe, setModalRecipe] = useState<Recipe | null>(null);
+  const [modalRecipe, setModalRecipe] = useState<RecipeWithCost | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
-  const [viewRecipe, setViewRecipe] = useState<Recipe | null>(null);
+  const [viewRecipe, setViewRecipe] = useState<RecipeWithCost | null>(null);
+  const [recalculatingAll, setRecalculatingAll] = useState(false);
+  const [recalculatingId, setRecalculatingId] = useState<string | null>(null);
 
   const fetchRecipes = useCallback(async () => {
     if (outlets.length === 0) {
@@ -367,14 +387,12 @@ export function RecipesPage() {
 
     const outletIds = outlets.map((o) => o.id);
     const { data, error } = await supabase
-  .from('recipes')
-  .select('*')
-  .or(`outlet_id.in.(${outletIds.join(',')}),outlet_id.is.null`)
-  .order('name');
+      .from('recipes')
+      .select('*')
+      .or(`outlet_id.in.(${outletIds.join(',')}),outlet_id.is.null`)
+      .order('name');
 
-    if (!error && data) {
-      setRecipes(data);
-    }
+    if (!error && data) setRecipes(data as RecipeWithCost[]);
     setLoading(false);
   }, [outlets]);
 
@@ -384,18 +402,22 @@ export function RecipesPage() {
 
   const handleSave = async (data: Partial<Recipe>) => {
     if (modalRecipe) {
-      const { error } = await supabase
-        .from('recipes')
-        .update(data)
-        .eq('id', modalRecipe.id);
+      const { error } = await supabase.from('recipes').update(data).eq('id', modalRecipe.id);
       if (!error) {
+        // After save, recalculate cost for the updated recipe
+        await supabase.rpc('calculate_recipe_cost', { p_recipe_id: modalRecipe.id });
         await fetchRecipes();
         setShowModal(false);
         setModalRecipe(null);
       }
     } else {
-      const { error } = await supabase.from('recipes').insert(data);
-      if (!error) {
+      const { data: inserted, error } = await supabase
+        .from('recipes')
+        .insert(data)
+        .select()
+        .single();
+      if (!error && inserted) {
+        await supabase.rpc('calculate_recipe_cost', { p_recipe_id: inserted.id });
         await fetchRecipes();
         setShowModal(false);
       }
@@ -410,10 +432,30 @@ export function RecipesPage() {
     }
   };
 
+  // Recalculate a single recipe's cost
+  const recalculateOne = async (recipeId: string) => {
+    setRecalculatingId(recipeId);
+    await supabase.rpc('calculate_recipe_cost', { p_recipe_id: recipeId });
+    await fetchRecipes();
+    // If view modal is open for this recipe, update it
+    if (viewRecipe?.id === recipeId) {
+      const updated = recipes.find((r) => r.id === recipeId);
+      if (updated) setViewRecipe(updated);
+    }
+    setRecalculatingId(null);
+  };
+
+  // Recalculate all recipes at once
+  const recalculateAll = async () => {
+    setRecalculatingAll(true);
+    await supabase.rpc('recalculate_all_recipe_costs');
+    await fetchRecipes();
+    setRecalculatingAll(false);
+  };
+
   const filteredRecipes = recipes.filter((recipe) => {
     const matchesSearch = recipe.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === 'all' || recipe.category === selectedCategory;
+    const matchesCategory = selectedCategory === 'all' || recipe.category === selectedCategory;
     const matchesOutlet = selectedOutlet === 'all' || recipe.outlet_id === selectedOutlet;
     return matchesSearch && matchesCategory && matchesOutlet;
   });
@@ -426,16 +468,23 @@ export function RecipesPage() {
           <h1 className="text-2xl font-bold text-white">Recipe Management</h1>
           <p className="text-zinc-400 mt-1">Manage your cocktail and beverage recipes</p>
         </div>
-        <button
-          onClick={() => {
-            setModalRecipe(null);
-            setShowModal(true);
-          }}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold hover:from-amber-400 hover:to-amber-500 transition-all"
-        >
-          <Plus className="h-5 w-5" />
-          Add Recipe
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={recalculateAll}
+            disabled={recalculatingAll}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-[#2e2e31] text-sm text-zinc-300 hover:text-white hover:border-zinc-500 transition-all disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${recalculatingAll ? 'animate-spin' : ''}`} />
+            {recalculatingAll ? 'Recalculating...' : 'Recalculate All'}
+          </button>
+          <button
+            onClick={() => { setModalRecipe(null); setShowModal(true); }}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold hover:from-amber-400 hover:to-amber-500 transition-all"
+          >
+            <Plus className="h-5 w-5" />
+            Add Recipe
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -459,9 +508,7 @@ export function RecipesPage() {
             >
               <option value="all">All Outlets</option>
               {outlets.map((outlet) => (
-                <option key={outlet.id} value={outlet.id}>
-                  {outlet.name}
-                </option>
+                <option key={outlet.id} value={outlet.id}>{outlet.name}</option>
               ))}
             </select>
           )}
@@ -488,36 +535,53 @@ export function RecipesPage() {
       ) : filteredRecipes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredRecipes.map((recipe) => {
+            // Use calculated_cost if available, fall back to manual cost
+            const effectiveCost =
+              recipe.calculated_cost != null && recipe.calculated_cost > 0
+                ? recipe.calculated_cost
+                : recipe.cost;
+
             const margin =
               recipe.selling_price > 0
-                ? ((recipe.selling_price - recipe.cost) / recipe.selling_price) * 100
+                ? ((recipe.selling_price - effectiveCost) / recipe.selling_price) * 100
                 : 0;
+
+            const isRecalculating = recalculatingId === recipe.id;
+            const hasUncosted =
+              recipe.uncosted_ingredients && recipe.uncosted_ingredients.length > 0;
 
             return (
               <div
                 key={recipe.id}
                 className="luxury-card hover:border-[#2e2e31] transition-all group"
               >
-               {recipe.image_url && (
+                {recipe.image_url && (
                   <div className="mb-4">
-                    <img 
-                      src={recipe.image_url} 
+                    <img
+                      src={recipe.image_url}
                       alt={recipe.name}
                       className="w-full h-48 object-cover rounded-xl"
                     />
                   </div>
                 )}
+
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex-1">
                     <h3 className="text-lg font-semibold text-white mb-1">{recipe.name}</h3>
                     <span className="text-xs text-zinc-500 capitalize">{recipe.category}</span>
                   </div>
-                  <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Recalculate button */}
                     <button
-                      onClick={() => {
-                        setModalRecipe(recipe);
-                        setShowModal(true);
-                      }}
+                      onClick={() => recalculateOne(recipe.id)}
+                      disabled={isRecalculating}
+                      className="p-2 rounded-lg text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+                      title="Recalculate cost"
+                    >
+                      <RefreshCw className={`h-4 w-4 ${isRecalculating ? 'animate-spin' : ''}`} />
+                    </button>
+                    <button
+                      onClick={() => { setModalRecipe(recipe); setShowModal(true); }}
                       className="p-2 rounded-lg text-zinc-400 hover:text-white hover:bg-[#1a1a1d] transition-colors"
                     >
                       <Edit2 className="h-4 w-4" />
@@ -571,17 +635,38 @@ export function RecipesPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[#1e1e21]">
+                {/* Cost / Price / Margin stats */}
+                <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#1e1e21]">
+                  <div>
+                    <div className="flex items-center gap-1 mb-1">
+                      <p className="text-xs text-zinc-500">Cost</p>
+                      {hasUncosted && (
+                        <AlertCircle className="h-3 w-3 text-amber-500" title="Some ingredients not costed" />
+                      )}
+                    </div>
+                    <p className="text-base font-bold text-white">
+                      AED {effectiveCost.toFixed(2)}
+                    </p>
+                    {/* Coverage bar */}
+                    {recipe.cost_coverage != null && (
+                      <div className="mt-1.5 h-1 w-full rounded-full bg-[#1a1a1d] overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${coverageFillClass(recipe.cost_coverage)}`}
+                          style={{ width: `${recipe.cost_coverage}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
                   <div>
                     <p className="text-xs text-zinc-500 mb-1">Price</p>
-                    <p className="text-lg font-bold text-white">
-                      {`AED ${recipe.selling_price.toFixed(2)}`}
+                    <p className="text-base font-bold text-white">
+                      AED {recipe.selling_price.toFixed(2)}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500 mb-1">Margin</p>
                     <p
-                      className={`text-lg font-bold ${
+                      className={`text-base font-bold ${
                         margin >= 70
                           ? 'text-emerald-400'
                           : margin >= 50
@@ -615,10 +700,7 @@ export function RecipesPage() {
           </p>
           {recipes.length === 0 && (
             <button
-              onClick={() => {
-                setModalRecipe(null);
-                setShowModal(true);
-              }}
+              onClick={() => { setModalRecipe(null); setShowModal(true); }}
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 text-black font-semibold hover:from-amber-400 hover:to-amber-500 transition-all"
             >
               <Plus className="h-5 w-5" />
@@ -628,16 +710,13 @@ export function RecipesPage() {
         </div>
       )}
 
-      {/* Recipe Modal */}
+      {/* Add / Edit Recipe Modal */}
       {showModal && (
         <RecipeModal
           recipe={modalRecipe}
           outlets={outlets}
           onSave={handleSave}
-          onClose={() => {
-            setShowModal(false);
-            setModalRecipe(null);
-          }}
+          onClose={() => { setShowModal(false); setModalRecipe(null); }}
         />
       )}
 
@@ -661,10 +740,11 @@ export function RecipesPage() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+
             {viewRecipe.image_url && (
               <div className="mb-6">
-                <img 
-                  src={viewRecipe.image_url} 
+                <img
+                  src={viewRecipe.image_url}
                   alt={viewRecipe.name}
                   className="w-full h-64 object-cover rounded-xl"
                 />
@@ -707,9 +787,7 @@ export function RecipesPage() {
               <div className="mb-6 grid grid-cols-2 gap-4">
                 {viewRecipe.glassware && (
                   <div className="p-4 rounded-xl bg-[#0a0a0b]">
-                    <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">
-                      Glassware
-                    </p>
+                    <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Glassware</p>
                     <p className="text-sm text-white">{viewRecipe.glassware}</p>
                   </div>
                 )}
@@ -722,30 +800,88 @@ export function RecipesPage() {
               </div>
             )}
 
-            <div className="flex gap-3 p-4 rounded-xl bg-[#0a0a0b]">
-              <div className="flex-1 text-center">
-                <p className="text-xs text-zinc-500 mb-1">Cost</p>
-                <p className="text-lg font-bold text-white">{`AED ${viewRecipe.cost.toFixed(2)}`}</p>
+            {/* Cost breakdown section */}
+            <div className="p-4 rounded-xl bg-[#0a0a0b] space-y-4">
+              {/* Main stats row */}
+              <div className="flex gap-3">
+                <div className="flex-1 text-center">
+                  <p className="text-xs text-zinc-500 mb-1">Calc. Cost</p>
+                  <p className="text-lg font-bold text-white">
+                    AED {(viewRecipe.calculated_cost ?? viewRecipe.cost).toFixed(2)}
+                  </p>
+                </div>
+                <div className="w-px bg-[#1e1e21]" />
+                <div className="flex-1 text-center">
+                  <p className="text-xs text-zinc-500 mb-1">Price</p>
+                  <p className="text-lg font-bold text-white">
+                    AED {viewRecipe.selling_price.toFixed(2)}
+                  </p>
+                </div>
+                <div className="w-px bg-[#1e1e21]" />
+                <div className="flex-1 text-center">
+                  <p className="text-xs text-zinc-500 mb-1">Margin</p>
+                  <p className="text-lg font-bold text-emerald-400">
+                    {viewRecipe.selling_price > 0
+                      ? (
+                          ((viewRecipe.selling_price - (viewRecipe.calculated_cost ?? viewRecipe.cost)) /
+                            viewRecipe.selling_price) *
+                          100
+                        ).toFixed(0)
+                      : '—'}
+                    %
+                  </p>
+                </div>
               </div>
-              <div className="w-px bg-[#1e1e21]" />
-              <div className="flex-1 text-center">
-                <p className="text-xs text-zinc-500 mb-1">Price</p>
-                <p className="text-lg font-bold text-white">
-                  AED{viewRecipe.selling_price.toFixed(2)}
-                </p>
-              </div>
-              <div className="w-px bg-[#1e1e21]" />
-              <div className="flex-1 text-center">
-                <p className="text-xs text-zinc-500 mb-1">Margin</p>
-                <p className="text-lg font-bold text-emerald-400">
-                  {(
-                    ((viewRecipe.selling_price - viewRecipe.cost) /
-                      viewRecipe.selling_price) *
-                    100
-                  ).toFixed(0)}
-                  %
-                </p>
-              </div>
+
+              {/* Coverage bar */}
+              {viewRecipe.cost_coverage != null && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className="text-xs text-zinc-500">Ingredient coverage</p>
+                    <span className={`text-xs font-medium ${coverageTextClass(viewRecipe.cost_coverage)}`}>
+                      {viewRecipe.cost_coverage}%
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-[#1e1e21] overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${coverageFillClass(viewRecipe.cost_coverage)}`}
+                      style={{ width: `${viewRecipe.cost_coverage}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Uncosted ingredients list */}
+              {viewRecipe.uncosted_ingredients && viewRecipe.uncosted_ingredients.length > 0 && (
+                <div>
+                  <p className="text-xs text-zinc-500 mb-2 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3 text-amber-500" />
+                    Not yet costed
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {viewRecipe.uncosted_ingredients.map((name, idx) => (
+                      <span
+                        key={idx}
+                        className="px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-400/80 text-xs"
+                      >
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Recalculate button */}
+              <button
+                onClick={() => recalculateOne(viewRecipe.id)}
+                disabled={recalculatingId === viewRecipe.id}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-[#2e2e31] text-xs text-zinc-400 hover:text-white hover:border-zinc-500 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw
+                  className={`h-3.5 w-3.5 ${recalculatingId === viewRecipe.id ? 'animate-spin' : ''}`}
+                />
+                {recalculatingId === viewRecipe.id ? 'Recalculating...' : 'Recalculate Cost'}
+              </button>
             </div>
           </div>
         </div>
