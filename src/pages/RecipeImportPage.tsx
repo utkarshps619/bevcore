@@ -3,17 +3,20 @@ import * as XLSX from 'xlsx';
 import { Upload, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+interface Ingredient {
+  name: string;
+  amount: string;
+}
+
 interface ParsedRecipe {
   name: string;
-  ingredients: string[];
-  recipe_cost: number;
+  ingredients: Ingredient[];
+  cost: number;
   selling_price: number;
-  method: string;
-  glass_type: string;
+  preparation: string;
+  glassware: string;
   garnish: string;
-  loss_factor: number;
   category: string;
-  outlet_id: string;
 }
 
 interface ImportResult {
@@ -21,6 +24,19 @@ interface ImportResult {
   inserted: number;
   total: number;
   errors: string[];
+}
+
+// Parse "Amaretto Disaronno (50ml)" → { name: "Amaretto Disaronno", amount: "50ml" }
+function parseIngredient(raw: string): Ingredient {
+  const trimmed = raw.trim();
+  const match = trimmed.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (match) {
+    return {
+      name: match[1].trim(),
+      amount: match[2].trim(),
+    };
+  }
+  return { name: trimmed, amount: '' };
 }
 
 export function RecipeImportPage() {
@@ -46,7 +62,6 @@ export function RecipeImportPage() {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
         const workbook = XLSX.read(data, { type: 'array' });
 
-        // Read first sheet (clean format)
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
@@ -58,7 +73,6 @@ export function RecipeImportPage() {
 
         const parsed: ParsedRecipe[] = [];
 
-        // Row 0 = headers, start from row 1
         for (let i = 1; i < rows.length; i++) {
           const row = rows[i];
           if (!row || !row[0]) continue;
@@ -70,27 +84,23 @@ export function RecipeImportPage() {
           const method = String(row[4] || '').trim();
           const glass = String(row[5] || '').trim();
           const garnish = String(row[6] || '').trim();
-          const lossFactor = parseFloat(String(row[7] || '0.05'));
 
           if (!name || isNaN(cost) || isNaN(selling)) continue;
 
-          // Split ingredients by comma
           const ingredients = ingredientsRaw
             .split(',')
-            .map((ing) => ing.trim())
-            .filter(Boolean);
+            .map((ing) => parseIngredient(ing))
+            .filter((ing) => ing.name);
 
           parsed.push({
             name,
             ingredients,
-            recipe_cost: cost,
+            cost,
             selling_price: selling,
-            method,
-            glass_type: glass,
+            preparation: method,
+            glassware: glass,
             garnish,
-            loss_factor: isNaN(lossFactor) ? 0.05 : lossFactor,
             category: 'cocktail',
-            outlet_id: 'default',
           });
         }
 
@@ -119,12 +129,11 @@ export function RecipeImportPage() {
           name: r.name,
           category: r.category,
           ingredients: r.ingredients,
-          recipe_cost: r.recipe_cost,
+          cost: r.cost,
           selling_price: r.selling_price,
-          method: r.method,
-          glass_type: r.glass_type,
+          preparation: r.preparation,
+          glassware: r.glassware,
           garnish: r.garnish,
-          loss_factor: r.loss_factor,
         }))
       );
 
@@ -167,7 +176,6 @@ export function RecipeImportPage() {
       </div>
 
       <div className="luxury-card space-y-6">
-        {/* File Upload */}
         <div>
           <label className="block text-sm font-medium text-zinc-300 mb-3">
             Select Excel File
@@ -196,14 +204,12 @@ export function RecipeImportPage() {
           </label>
         </div>
 
-        {/* Parse Error */}
         {parseError && (
           <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm">
             {parseError}
           </div>
         )}
 
-        {/* Preview */}
         {recipes.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-3">
@@ -226,11 +232,11 @@ export function RecipeImportPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-white text-sm font-medium">{recipe.name}</span>
                       <span className="text-amber-400 text-sm">
-                        Cost: {recipe.recipe_cost.toFixed(2)} AED | Selling: {recipe.selling_price} AED
+                        Cost: {recipe.cost.toFixed(2)} AED | Selling: {recipe.selling_price} AED
                       </span>
                     </div>
                     <p className="text-zinc-500 text-xs mt-1 truncate">
-                      {recipe.ingredients.slice(0, 4).join(', ')}
+                      {recipe.ingredients.slice(0, 4).map((i) => `${i.amount} ${i.name}`).join(', ')}
                       {recipe.ingredients.length > 4 ? ` +${recipe.ingredients.length - 4} more` : ''}
                     </p>
                   </div>
@@ -240,7 +246,6 @@ export function RecipeImportPage() {
           </div>
         )}
 
-        {/* Import Button */}
         {recipes.length > 0 && !result && (
           <button
             onClick={handleImport}
@@ -251,7 +256,6 @@ export function RecipeImportPage() {
           </button>
         )}
 
-        {/* Result */}
         {result && (
           <div
             className={`p-4 rounded-xl border ${
