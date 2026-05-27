@@ -367,10 +367,10 @@ export function RecipesPage() {
 
     const outletIds = outlets.map((o) => o.id);
     const { data, error } = await supabase
-      .from('recipes')
-      .select('*')
-      .in('outlet_id', outletIds)
-      .order('name');
+  .from('recipes')
+  .select('*')
+  .or(`outlet_id.in.(${outletIds.join(',')}),outlet_id.is.null`)
+  .order('name');
 
     if (!error && data) {
       setRecipes(data);
