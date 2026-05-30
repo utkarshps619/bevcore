@@ -34,7 +34,6 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user } = useAuth();
-
   return (
     <Routes>
       <Route
@@ -58,18 +57,11 @@ function AppRoutes() {
         <Route path="recipe-import" element={<RecipeImportPage />} />
         <Route path="ingredient-import" element={<IngredientImportPage />} />
         <Route path="pour-cost" element={<PourCostDashboard />} />
-      <Route path="*" element={<Navigate to="/" replace />} />    
-     path: '/variance',
-     element: <VarianceDashboard />,
-     label: 'Pour Cost Variance'
-        {
-  path: '/open-item',
-  element: <OpenItemCalculator />,
-  label: 'Open Item Pricing'
-}
-   }
-    </Route>
-      </Routes>
+        <Route path="variance" element={<VarianceDashboard />} />
+        <Route path="open-item" element={<OpenItemCalculator />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Route>
+    </Routes>
   );
 }
 
