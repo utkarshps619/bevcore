@@ -17,6 +17,7 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import { useUserOutlets } from '../hooks/useOutlets';
+import { Calculator } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -29,6 +30,7 @@ const navigation = [
   { name: 'Import Ingredients', href: '/ingredient-import', icon: Upload },
   { name: 'Pour Cost', href: '/pour-cost', icon: TrendingUp },
   { name: 'Pour Cost Variance', href: '/variance', icon: TrendingDown },
+  { name: 'Open Item Pricing', href: '/open-item', icon: Calculator },
 ];
 
 const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
