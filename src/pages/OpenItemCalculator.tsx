@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Plus, Trash2, Copy, Check } from 'lucide-react';
+import { Trash2, Copy, Check, Search } from 'lucide-react';
 
 interface Ingredient {
   id: string;
@@ -18,12 +18,13 @@ interface SelectedIngredient {
 
 const OpenItemCalculator = () => {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [filtered, setFiltered] = useState<Ingredient[]>([]);
   const [selected, setSelected] = useState<SelectedIngredient[]>([]);
   const [loading, setLoading] = useState(true);
-  const [target_margin, setTarget_margin] = useState(35); // 35% pour cost
+  const [target_margin, setTargetMargin] = useState(35);
   const [copied, setCopied] = useState(false);
+  const [search, setSearch] = useState('');
 
-  // Load ingredients
   useEffect(() => {
     const load = async () => {
       const { data } = await supabase
@@ -31,20 +32,25 @@ const OpenItemCalculator = () => {
         .select('id, name, cost_per_ml, category')
         .order('name');
       setIngredients(data || []);
+      setFiltered(data || []);
       setLoading(false);
     };
     load();
   }, []);
 
+  useEffect(() => {
+    const q = search.toLowerCase();
+    setFiltered(ingredients.filter((i) => i.name.toLowerCase().includes(q)));
+  }, [search, ingredients]);
+
   const addIngredient = (ing: Ingredient) => {
-    const cost = ing.cost_per_ml * 30; // default 30ml pour
     setSelected([
       ...selected,
       {
         ingredient_id: ing.id,
         name: ing.name,
         amount_ml: 30,
-        cost: cost,
+        cost: ing.cost_per_ml * 30,
       },
     ]);
   };
@@ -64,8 +70,7 @@ const OpenItemCalculator = () => {
   };
 
   const total_cost = selected.reduce((sum, ing) => sum + ing.cost, 0);
-  const suggested_price = total_cost / (target_margin / 100);
-  const actual_margin = (total_cost / suggested_price) * 100;
+  const suggested_price = target_margin > 0 ? total_cost / (target_margin / 100) : 0;
 
   const copyPrice = () => {
     navigator.clipboard.writeText(suggested_price.toFixed(2));
@@ -73,61 +78,81 @@ const OpenItemCalculator = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  if (loading) return <div className="p-6 text-gray-600">Loading ingredients...</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="h-8 w-8 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Open Item Calculator</h1>
+    <div className="min-h-screen bg-[#0a0a0b] p-6">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-2xl font-semibold text-white mb-6">Open Item Pricing</h1>
 
         <div className="grid grid-cols-3 gap-6">
           {/* Left: Ingredient picker */}
-          <div className="col-span-2">
-            <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
-              <h2 className="font-semibold text-lg mb-4">Select Ingredients</h2>
-              <div className="max-h-96 overflow-y-auto">
-                <div className="grid grid-cols-2 gap-2">
-                  {ingredients.map((ing) => (
-                    <button
-                      key={ing.id}
-                      onClick={() => addIngredient(ing)}
-                      className="text-left p-2 rounded border border-gray-200 hover:bg-blue-50 hover:border-blue-300 transition text-sm"
-                    >
-                      <div className="font-medium">{ing.name}</div>
-                      <div className="text-xs text-gray-600">
-                        AED {ing.cost_per_ml.toFixed(4)}/ml
-                      </div>
-                    </button>
-                  ))}
-                </div>
+          <div className="col-span-2 space-y-4">
+
+            {/* Search + ingredient grid */}
+            <div className="bg-[#111113] rounded-xl border border-[#1e1e21] p-4">
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
+                <input
+                  type="text"
+                  placeholder="Search ingredients..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 bg-[#1a1a1d] border border-[#2e2e31] rounded-lg text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-amber-500/50"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-2 max-h-80 overflow-y-auto pr-1">
+                {filtered.map((ing) => (
+                  <button
+                    key={ing.id}
+                    onClick={() => addIngredient(ing)}
+                    className="text-left p-3 rounded-lg bg-[#1a1a1d] border border-[#2e2e31] hover:border-amber-500/40 hover:bg-[#1e1e21] transition-all text-sm"
+                  >
+                    <div className="font-medium text-white truncate">{ing.name}</div>
+                    <div className="text-xs text-zinc-500 mt-0.5">
+                      AED {ing.cost_per_ml?.toFixed(4)}/ml · {ing.category}
+                    </div>
+                  </button>
+                ))}
               </div>
             </div>
 
             {/* Selected ingredients */}
-            <div className="bg-white rounded-lg border border-gray-200 p-4">
-              <h2 className="font-semibold text-lg mb-4">Cocktail Recipe</h2>
+            <div className="bg-[#111113] rounded-xl border border-[#1e1e21] p-4">
+              <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-4">
+                Cocktail Build
+              </h2>
               {selected.length === 0 ? (
-                <p className="text-gray-500">Click ingredients to add them</p>
+                <p className="text-zinc-500 text-sm py-4 text-center">
+                  Click ingredients above to build your cocktail
+                </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {selected.map((ing, idx) => (
-                    <div key={idx} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                      <div className="flex-1">
-                        <div className="font-medium">{ing.name}</div>
+                    <div
+                      key={idx}
+                      className="flex items-center gap-3 p-3 bg-[#1a1a1d] rounded-lg border border-[#2e2e31]"
+                    >
+                      <div className="flex-1 text-sm font-medium text-white truncate">
+                        {ing.name}
                       </div>
                       <input
                         type="number"
                         value={ing.amount_ml}
                         onChange={(e) => updateAmount(idx, parseFloat(e.target.value) || 0)}
-                        className="w-16 px-2 py-1 border border-gray-300 rounded text-sm"
+                        className="w-16 px-2 py-1 bg-[#0a0a0b] border border-[#2e2e31] rounded text-sm text-white text-center focus:outline-none focus:border-amber-500/50"
                       />
-                      <span className="text-sm text-gray-600 w-8">ml</span>
-                      <span className="font-mono w-16 text-right">
+                      <span className="text-xs text-zinc-500 w-5">ml</span>
+                      <span className="text-sm font-mono text-amber-400 w-20 text-right">
                         AED {ing.cost.toFixed(2)}
                       </span>
                       <button
                         onClick={() => removeIngredient(idx)}
-                        className="text-red-600 hover:bg-red-50 p-1 rounded"
+                        className="text-zinc-600 hover:text-rose-400 transition-colors p-1"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -138,84 +163,86 @@ const OpenItemCalculator = () => {
             </div>
           </div>
 
-          {/* Right: Pricing summary */}
-          <div className="bg-white rounded-lg border border-gray-200 p-6 h-fit sticky top-6">
-            <h2 className="font-semibold text-lg mb-6">Pricing</h2>
+          {/* Right: Pricing panel */}
+          <div className="bg-[#111113] rounded-xl border border-[#1e1e21] p-6 h-fit sticky top-6">
+            <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wider mb-6">
+              Pricing
+            </h2>
 
             {/* Margin slider */}
             <div className="mb-6">
-              <label className="block text-sm font-medium mb-2">
-                Target Pour Cost: {target_margin}%
-              </label>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="text-zinc-400">Target Pour Cost</span>
+                <span className="text-amber-400 font-semibold">{target_margin}%</span>
+              </div>
               <input
                 type="range"
                 min="20"
                 max="50"
                 value={target_margin}
-                onChange={(e) => setTarget_margin(parseInt(e.target.value))}
-                className="w-full"
+                onChange={(e) => setTargetMargin(parseInt(e.target.value))}
+                className="w-full accent-amber-500"
               />
-              <div className="text-xs text-gray-600 mt-2">
-                (Lower % = higher margin for bar)
-              </div>
+              <div className="text-xs text-zinc-600 mt-1">Lower % = higher bar margin</div>
             </div>
 
-            {/* Cost breakdown */}
-            <div className="space-y-3 mb-6 pb-6 border-b border-gray-200">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Total COGS:</span>
-                <span className="font-mono font-semibold">
-                  AED {total_cost.toFixed(2)}
-                </span>
+            {/* Cost summary */}
+            <div className="space-y-3 mb-6 pb-6 border-b border-[#1e1e21]">
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-400">Total COGS</span>
+                <span className="font-mono text-white">AED {total_cost.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Pour Cost %:</span>
-                <span className="font-mono">{actual_margin.toFixed(1)}%</span>
+              <div className="flex justify-between text-sm">
+                <span className="text-zinc-400">Multiplier</span>
+                <span className="font-mono text-zinc-300">
+                  {target_margin > 0 ? (100 / target_margin).toFixed(2) : '—'}x
+                </span>
               </div>
             </div>
 
             {/* Suggested price */}
             <div className="mb-6">
-              <div className="text-sm text-gray-600 mb-2">Suggested Price</div>
-              <div className="text-4xl font-bold mb-4">
-                AED {suggested_price.toFixed(2)}
+              <div className="text-xs text-zinc-500 mb-1 uppercase tracking-wider">
+                Suggested Price
+              </div>
+              <div className="text-4xl font-bold text-white mb-4">
+                {total_cost > 0 ? `AED ${suggested_price.toFixed(2)}` : '—'}
               </div>
               <button
                 onClick={copyPrice}
-                className={`w-full px-4 py-2 rounded font-semibold flex items-center justify-center gap-2 transition ${
+                disabled={total_cost === 0}
+                className={`w-full px-4 py-2.5 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 transition-all ${
                   copied
-                    ? 'bg-green-100 text-green-700'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : total_cost === 0
+                    ? 'bg-[#1a1a1d] text-zinc-600 cursor-not-allowed'
+                    : 'bg-gradient-to-r from-amber-500 to-amber-600 text-black hover:from-amber-400 hover:to-amber-500'
                 }`}
               >
                 {copied ? (
-                  <>
-                    <Check className="w-4 h-4" /> Copied!
-                  </>
+                  <><Check className="w-4 h-4" /> Copied!</>
                 ) : (
-                  <>
-                    <Copy className="w-4 h-4" /> Copy Price
-                  </>
+                  <><Copy className="w-4 h-4" /> Copy Price</>
                 )}
               </button>
             </div>
 
             {/* Quick reference */}
-            <div className="bg-gray-50 p-3 rounded text-xs space-y-1">
-              <div className="font-semibold mb-2">Quick Reference</div>
-              <div className="flex justify-between">
-                <span>20% pour cost:</span>
-                <span className="font-mono">AED {(total_cost / 0.2).toFixed(2)}</span>
+            {total_cost > 0 && (
+              <div className="bg-[#0a0a0b] rounded-lg p-3 space-y-2">
+                <div className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
+                  Quick Reference
+                </div>
+                {[20, 25, 30, 35].map((pct) => (
+                  <div key={pct} className="flex justify-between text-xs">
+                    <span className="text-zinc-500">{pct}% pour cost</span>
+                    <span className={`font-mono ${pct === target_margin ? 'text-amber-400 font-semibold' : 'text-zinc-300'}`}>
+                      AED {(total_cost / (pct / 100)).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div className="flex justify-between">
-                <span>25% pour cost:</span>
-                <span className="font-mono">AED {(total_cost / 0.25).toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>30% pour cost:</span>
-                <span className="font-mono">AED {(total_cost / 0.3).toFixed(2)}</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
