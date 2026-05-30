@@ -177,7 +177,7 @@ const OpenItemCalculator = () => {
               </div>
               <input
                 type="range"
-                min="20"
+                min="5"
                 max="50"
                 value={target_margin}
                 onChange={(e) => setTargetMargin(parseInt(e.target.value))}
