@@ -12,6 +12,7 @@ import { IngredientImportPage } from './pages/IngredientImportPage';
 import { IngredientsPage } from './pages/IngredientsPage';
 import { PourCostDashboard } from './pages/PourCostDashboard';
 import VarianceDashboard from './pages/VarianceDashboard';
+import OpenItemCalculator from './pages/OpenItemCalculator';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -61,6 +62,11 @@ function AppRoutes() {
      path: '/variance',
      element: <VarianceDashboard />,
      label: 'Pour Cost Variance'
+        {
+  path: '/open-item',
+  element: <OpenItemCalculator />,
+  label: 'Open Item Pricing'
+}
    }
     </Route>
       </Routes>
