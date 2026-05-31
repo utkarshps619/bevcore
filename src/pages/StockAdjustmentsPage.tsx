@@ -128,7 +128,8 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
                 Ingredients
               </div>
               {results.filter(r => r.type === 'ingredient').map((item) => (
-                <button key={item.id} onClick={() => choose(item)}
+                <button key={item.id}
+                  onMouseDown={(e) => { e.preventDefault(); choose(item); }}
                   className="w-full text-left px-4 py-2.5 hover:bg-white/5 transition-colors flex items-center justify-between">
                   <span className="text-white text-sm">{item.name}</span>
                   <span className="text-xs text-zinc-500">{item.category} · {item.bottle_size}ml</span>
@@ -143,7 +144,8 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
                 Cocktails & Recipes
               </div>
               {results.filter(r => r.type === 'recipe').map((item) => (
-                <button key={item.id} onClick={() => choose(item)}
+                <button key={item.id}
+                  onMouseDown={(e) => { e.preventDefault(); choose(item); }}
                   className="w-full text-left px-4 py-2.5 hover:bg-white/5 transition-colors flex items-center justify-between">
                   <span className="text-white text-sm">{item.name}</span>
                   <span className="text-xs text-zinc-500">
@@ -220,24 +222,14 @@ function QuantityInput({ value, unit, onValueChange, onUnitChange, item }: {
   const units = isRecipe ? recipeUnits : UNIT_OPTIONS;
 
   // Recipe unit hint
-  // Calculate total batch volume from recipe ingredients JSONB
-  const batchVolumeMl = (() => {
-    if (!isRecipe || !item?.ingredients) return null;
-    let total = 0;
-    for (const ing of item.ingredients) {
-      const match = String(ing.amount).match(/([\d.]+)\s*ml/i);
-      if (match) total += parseFloat(match[1]);
-    }
-    return total > 0 ? total : null;
-  })();
+  // Batch is standardised at 1000ml (1 litre premix)
+  const BATCH_ML = 1000;
 
   const recipeHint = isRecipe ? (
     unit === 'glass'
-      ? 'Single serve — 1 drink poured or spilled'
+      ? 'Single serve — 1 drink'
       : unit === 'batch'
-      ? batchVolumeMl
-        ? `1 batch = ${batchVolumeMl}ml total (${item?.ingredients?.map(i => i.amount + ' ' + i.name).slice(0, 3).join(', ')}${(item?.ingredients?.length ?? 0) > 3 ? '...' : ''})`
-        : 'One full recipe batch — total ml not calculated (no spec loaded)'
+      ? '1 batch = 1 litre premix (1000ml)'
       : 'Pre-batched volume in millilitres'
   ) : null;
 
@@ -259,7 +251,7 @@ function QuantityInput({ value, unit, onValueChange, onUnitChange, item }: {
         </div>
       </div>
       {recipeHint && (
-        <p className={`text-xs mt-1.5 ${unit === 'batch' && batchVolumeMl ? 'text-amber-500/80' : 'text-zinc-600 italic'}`}>
+        <p className={`text-xs mt-1.5 ${unit === 'batch' ? 'text-amber-500/80' : 'text-zinc-600 italic'}`}>
           {recipeHint}
         </p>
       )}
@@ -311,8 +303,9 @@ export function StockAdjustmentsPage() {
     const v = parseFloat(value);
     if (!v) return 0;
     if (item?.type === 'recipe') {
-      // For recipes: ml-direct if unit is ml, else 0 (we don't track ml for glass/batch — only quantity_value matters)
-      return unit === 'ml' ? v : 0;
+      if (unit === 'ml') return v;
+      if (unit === 'batch') return v * 1000;
+      return 0; // glass — no ml equivalent stored
     }
     if (unit === 'ml') return v;
     return v * Number(item?.bottle_size ?? 750);
