@@ -59,11 +59,14 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<SearchResult | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+  const skipSearch = useRef(false);
 
   useEffect(() => {
     setQuery('');
     setSelected(null);
     setResults([]);
+    setOpen(false);
+    skipSearch.current = false;
   }, [resetKey]);
 
   useEffect(() => {
@@ -75,25 +78,35 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
   }, []);
 
   useEffect(() => {
+    if (skipSearch.current) { skipSearch.current = false; return; }
     if (query.length < 2) { setResults([]); setOpen(false); return; }
     const run = async () => {
-      const [ingRes, recRes] = await Promise.all([
+      const [ingRes, recRes, wineRes] = await Promise.all([
         supabase.from('ingredients')
           .select('id, name, category, bottle_size, unit_cost, cost_per_ml')
-          .ilike('name', `%${query}%`).limit(5),
+          .ilike('name', `%${query}%`).limit(4),
         supabase.from('recipes')
           .select('id, name, category, calculated_cost, selling_price, ingredients')
-          .ilike('name', `%${query}%`).limit(5),
+          .ilike('name', `%${query}%`).limit(4),
+        supabase.from('wines')
+          .select('id, wine, category, cost_aed')
+          .ilike('wine', `%${query}%`).limit(4),
       ]);
       const ingredients: SearchResult[] = (ingRes.data ?? []).map((i) => ({ ...i, type: 'ingredient' as const }));
       const recipes: SearchResult[] = (recRes.data ?? []).map((r) => ({ ...r, type: 'recipe' as const }));
-      setResults([...ingredients, ...recipes]);
+      const wines: SearchResult[] = (wineRes.data ?? []).map((w) => ({
+        id: w.id, name: w.wine, type: 'ingredient' as const,
+        category: w.category, bottle_size: 750,
+        unit_cost: w.cost_aed, cost_per_ml: w.cost_aed ? w.cost_aed / 750 : 0,
+      }));
+      setResults([...ingredients, ...wines, ...recipes]);
       setOpen(true);
     };
     run();
   }, [query]);
 
   const choose = (item: SearchResult) => {
+    skipSearch.current = true;
     setSelected(item);
     setQuery(item.name);
     setOpen(false);
@@ -107,8 +120,8 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
         <input
           value={query}
           onChange={(e) => { setQuery(e.target.value); setSelected(null); }}
-          onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder="Search ingredient or cocktail..."
+          onFocus={() => !selected && results.length > 0 && setOpen(true)}
+          placeholder="Search ingredient, wine or cocktail..."
           className="luxury-input w-full pl-9 pr-8"
         />
         {query && (
@@ -125,7 +138,7 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
           {results.filter(r => r.type === 'ingredient').length > 0 && (
             <>
               <div className="px-4 py-1.5 text-xs font-semibold text-zinc-600 uppercase tracking-wider border-b border-[#2e2e31]">
-                Ingredients
+                Ingredients & Wines
               </div>
               {results.filter(r => r.type === 'ingredient').map((item) => (
                 <button key={item.id}
