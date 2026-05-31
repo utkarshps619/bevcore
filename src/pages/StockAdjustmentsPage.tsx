@@ -34,6 +34,7 @@ interface SearchResult {
   category?: string;
   calculated_cost?: number;
   selling_price?: number;
+  ingredients?: Array<{ name: string; amount: string }>;
 }
 
 interface Adjustment {
@@ -81,7 +82,7 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
           .select('id, name, category, bottle_size, unit_cost, cost_per_ml')
           .ilike('name', `%${query}%`).limit(5),
         supabase.from('recipes')
-          .select('id, name, category, calculated_cost, selling_price')
+          .select('id, name, category, calculated_cost, selling_price, ingredients')
           .ilike('name', `%${query}%`).limit(5),
       ]);
       const ingredients: SearchResult[] = (ingRes.data ?? []).map((i) => ({ ...i, type: 'ingredient' as const }));
@@ -219,10 +220,25 @@ function QuantityInput({ value, unit, onValueChange, onUnitChange, item }: {
   const units = isRecipe ? recipeUnits : UNIT_OPTIONS;
 
   // Recipe unit hint
+  // Calculate total batch volume from recipe ingredients JSONB
+  const batchVolumeMl = (() => {
+    if (!isRecipe || !item?.ingredients) return null;
+    let total = 0;
+    for (const ing of item.ingredients) {
+      const match = String(ing.amount).match(/([\d.]+)\s*ml/i);
+      if (match) total += parseFloat(match[1]);
+    }
+    return total > 0 ? total : null;
+  })();
+
   const recipeHint = isRecipe ? (
-    unit === 'glass' ? 'single serve poured / spilled'
-    : unit === 'batch' ? 'one full batch (multiple serves)'
-    : 'pre-batched volume in millilitres'
+    unit === 'glass'
+      ? 'Single serve — 1 drink poured or spilled'
+      : unit === 'batch'
+      ? batchVolumeMl
+        ? `1 batch = ${batchVolumeMl}ml total (${item?.ingredients?.map(i => i.amount + ' ' + i.name).slice(0, 3).join(', ')}${(item?.ingredients?.length ?? 0) > 3 ? '...' : ''})`
+        : 'One full recipe batch — total ml not calculated (no spec loaded)'
+      : 'Pre-batched volume in millilitres'
   ) : null;
 
   return (
@@ -243,7 +259,9 @@ function QuantityInput({ value, unit, onValueChange, onUnitChange, item }: {
         </div>
       </div>
       {recipeHint && (
-        <p className="text-xs text-zinc-600 mt-1.5 italic">{recipeHint}</p>
+        <p className={`text-xs mt-1.5 ${unit === 'batch' && batchVolumeMl ? 'text-amber-500/80' : 'text-zinc-600 italic'}`}>
+          {recipeHint}
+        </p>
       )}
       {(mlValue !== null || costValue !== null) && (
         <div className="mt-2 px-3 py-2 bg-[#0a0a0b] border border-[#1e1e21] rounded-lg text-xs text-zinc-400 flex gap-4">
