@@ -184,16 +184,21 @@ function QuantityInput({ value, unit, onValueChange, onUnitChange, item }: {
   onUnitChange: (u: string) => void;
   item: SearchResult | null;
 }) {
-  // Recipes: unit is always 'serves', no BTL/KEG
   const isRecipe = item?.type === 'recipe';
-  const units = isRecipe
-    ? [{ value: 'ml', label: 'SERVES' }]
-    : UNIT_OPTIONS;
+
+  // Recipes: GLASS (1 serve) | BATCH (multiple serves) | ML (pre-batch bulk)
+  const recipeUnits = [
+    { value: 'glass', label: 'GLASS' },
+    { value: 'batch', label: 'BATCH' },
+    { value: 'ml', label: 'ML' },
+  ];
 
   const mlValue = (() => {
     const v = parseFloat(value);
     if (!v || !item) return null;
-    if (isRecipe) return null; // recipes tracked by serves not ml
+    if (isRecipe) {
+      return unit === 'ml' ? v : null;
+    }
     if (unit === 'ml') return v;
     return v * Number(item.bottle_size ?? 750);
   })();
@@ -201,32 +206,45 @@ function QuantityInput({ value, unit, onValueChange, onUnitChange, item }: {
   const costValue = (() => {
     const v = parseFloat(value);
     if (!v || !item) return null;
-    if (isRecipe) return item.calculated_cost ? v * Number(item.calculated_cost) : null;
+    if (isRecipe) {
+      // GLASS = 1 serve cost. BATCH = same cost per unit (Sir enters total batches and we treat each batch as 1 serve unless he wants different).
+      // For BATCH, we assume 1 batch = full recipe yield (typically 1 serve too unless they pre-batch in 10s — they enter count of batches × calculated_cost).
+      if (item.calculated_cost) return v * Number(item.calculated_cost);
+      return null;
+    }
     if (!mlValue) return null;
     return mlValue * Number(item.cost_per_ml ?? 0);
   })();
 
+  const units = isRecipe ? recipeUnits : UNIT_OPTIONS;
+
+  // Recipe unit hint
+  const recipeHint = isRecipe ? (
+    unit === 'glass' ? 'single serve poured / spilled'
+    : unit === 'batch' ? 'one full batch (multiple serves)'
+    : 'pre-batched volume in millilitres'
+  ) : null;
+
   return (
     <div>
       <div className="flex gap-2">
-        <input type="number" min="0" step={isRecipe ? '1' : '0.1'} value={value}
+        <input type="number" min="0" step="0.1" value={value}
           onChange={(e) => onValueChange(e.target.value)}
           placeholder="0" className="luxury-input flex-1" />
         <div className="flex bg-[#1a1a1d] border border-[#2e2e31] rounded-xl p-1 gap-1">
-          {isRecipe ? (
-            <span className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 text-black">SERVES</span>
-          ) : (
-            UNIT_OPTIONS.map((opt) => (
-              <button key={opt.value} onClick={() => onUnitChange(opt.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                  unit === opt.value ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'
-                }`}>
-                {opt.label}
-              </button>
-            ))
-          )}
+          {units.map((opt) => (
+            <button key={opt.value} onClick={() => onUnitChange(opt.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                unit === opt.value ? 'bg-amber-500 text-black' : 'text-zinc-400 hover:text-white'
+              }`}>
+              {opt.label}
+            </button>
+          ))}
         </div>
       </div>
+      {recipeHint && (
+        <p className="text-xs text-zinc-600 mt-1.5 italic">{recipeHint}</p>
+      )}
       {(mlValue !== null || costValue !== null) && (
         <div className="mt-2 px-3 py-2 bg-[#0a0a0b] border border-[#1e1e21] rounded-lg text-xs text-zinc-400 flex gap-4">
           {mlValue !== null && <span>= <span className="text-white font-mono">{mlValue.toFixed(0)}ml</span></span>}
@@ -274,7 +292,10 @@ export function StockAdjustmentsPage() {
   const calcMl = (value: string, unit: string, item: SearchResult | null) => {
     const v = parseFloat(value);
     if (!v) return 0;
-    if (item?.type === 'recipe') return v; // serves stored as qty_value, ml = serves
+    if (item?.type === 'recipe') {
+      // For recipes: ml-direct if unit is ml, else 0 (we don't track ml for glass/batch — only quantity_value matters)
+      return unit === 'ml' ? v : 0;
+    }
     if (unit === 'ml') return v;
     return v * Number(item?.bottle_size ?? 750);
   };
@@ -291,7 +312,7 @@ export function StockAdjustmentsPage() {
       recipe_id: wItem.type === 'recipe' ? wItem.id : null,
       ingredient_name: wItem.name,
       quantity_value: parseFloat(wQty),
-      quantity_unit: wItem.type === 'recipe' ? 'ml' : wUnit,
+      quantity_unit: wUnit,
       quantity_ml: ml,
       wastage_reason: wReason,
       notes: wNotes || null,
@@ -316,7 +337,7 @@ export function StockAdjustmentsPage() {
       recipe_id: tItem.type === 'recipe' ? tItem.id : null,
       ingredient_name: tItem.name,
       quantity_value: parseFloat(tQty),
-      quantity_unit: tItem.type === 'recipe' ? 'ml' : tUnit,
+      quantity_unit: tUnit,
       quantity_ml: ml,
       notes: tNotes || null,
       adjustment_date: tDate,
@@ -363,7 +384,15 @@ export function StockAdjustmentsPage() {
             <div>
               <label className="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wide">Item</label>
               <ItemSearch
-                onSelect={activeTab === 'wastage' ? setWItem : setTItem}
+                onSelect={(item) => {
+                  if (activeTab === 'wastage') {
+                    setWItem(item);
+                    setWUnit(item.type === 'recipe' ? 'glass' : 'btl');
+                  } else {
+                    setTItem(item);
+                    setTUnit(item.type === 'recipe' ? 'glass' : 'btl');
+                  }
+                }}
                 resetKey={activeTab === 'wastage' ? wResetKey : tResetKey}
               />
             </div>
@@ -474,8 +503,9 @@ export function StockAdjustmentsPage() {
                           )}
                         </div>
                         <p className="text-zinc-500 text-xs mt-0.5">
-                          {a.quantity_value} {a.item_type === 'recipe' ? 'serve(s)' : a.quantity_unit.toUpperCase()}
+                          {a.quantity_value} {a.quantity_unit.toUpperCase()}
                           {a.item_type !== 'recipe' && ` · ${Number(a.quantity_ml).toFixed(0)}ml`}
+                          {a.item_type === 'recipe' && a.quantity_unit === 'ml' && ` · ${Number(a.quantity_ml).toFixed(0)}ml`}
                           {a.type === 'wastage' && a.wastage_reason && (
                             <span className="ml-2 text-rose-400 capitalize">{a.wastage_reason}</span>
                           )}
