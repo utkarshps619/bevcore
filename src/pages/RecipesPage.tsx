@@ -4,7 +4,7 @@ import { useUserOutlets } from '../hooks/useOutlets';
 import type { Recipe } from '../types';
 import { Wine, Plus, Search, X, CreditCard as Edit2, Trash2, DollarSign, RefreshCw, AlertCircle } from 'lucide-react';
 
-const categories = ['cocktail', 'mocktail', 'spirit', 'wine', 'beer', 'other'];
+const categories = ['cocktail', 'mocktail', 'shot', 'non-alcoholic'];
 
 interface RecipeWithCost extends Recipe {
   calculated_cost?: number | null;
