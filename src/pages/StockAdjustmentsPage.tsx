@@ -380,8 +380,16 @@ export function StockAdjustmentsPage() {
   };
 
   const outletName = (id?: string) => OUTLETS.find((o) => o.id === id)?.name ?? '—';
-  const recentWastage = adjustments.filter((a) => a.type === 'wastage');
-  const recentTransfers = adjustments.filter((a) => a.type === 'transfer');
+  const [filterCategory, setFilterCategory] = useState('all');
+
+  const applyFilter = (list: Adjustment[]) => {
+    if (filterCategory === 'all') return list;
+    if (filterCategory === 'Cocktail') return list.filter(a => a.item_type === 'recipe');
+    return list.filter(a => a.item_type === 'ingredient' && a.item_category === filterCategory);
+  };
+
+  const recentWastage = applyFilter(adjustments.filter((a) => a.type === 'wastage'));
+  const recentTransfers = applyFilter(adjustments.filter((a) => a.type === 'transfer'));
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
@@ -511,9 +519,29 @@ export function StockAdjustmentsPage() {
 
         {/* Log */}
         <div className="bg-[#111113] border border-[#1e1e21] rounded-2xl p-6">
-          <h2 className="text-white font-semibold mb-5">
-            Recent {activeTab === 'wastage' ? 'Wastage' : 'Transfers'}
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-white font-semibold">
+              Recent {activeTab === 'wastage' ? 'Wastage' : 'Transfers'}
+            </h2>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="luxury-input text-xs py-1.5 px-3 w-auto"
+            >
+              <option value="all">All Categories</option>
+              <option value="Cocktail">Cocktail</option>
+              <option value="Spirit">Spirit</option>
+              <option value="Liqueur">Liqueur</option>
+              <option value="Beer">Beer</option>
+              <option value="Red">Red Wine</option>
+              <option value="White">White Wine</option>
+              <option value="Rose">Rosé</option>
+              <option value="Champagne">Champagne</option>
+              <option value="Sparkling">Sparkling</option>
+              <option value="Dessert">Dessert</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="h-6 w-6 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
@@ -525,24 +553,34 @@ export function StockAdjustmentsPage() {
               ) : (
                 (activeTab === 'wastage' ? recentWastage : recentTransfers).map((a) => (
                   <div key={a.id} className="px-4 py-3 bg-[#0a0a0b] border border-[#1e1e21] rounded-xl">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="text-white text-sm font-medium">{a.ingredient_name}</p>
-                          {a.item_type === 'recipe' && (
-                            <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400">cocktail</span>
-                          )}
-                          {a.item_type === 'ingredient' && a.item_category && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                              a.item_category === 'Spirit' ? 'bg-amber-500/15 text-amber-400' :
-                              a.item_category === 'Liqueur' ? 'bg-purple-500/15 text-purple-400' :
-                              a.item_category === 'Beer' ? 'bg-yellow-500/15 text-yellow-400' :
-                              ['Red','White','Rose','Champagne','Sparkling'].includes(a.item_category) ? 'bg-blue-500/15 text-blue-400' :
-                              'bg-zinc-500/15 text-zinc-400'
-                            }`}>{a.item_category}</span>
-                          )}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        {/* Name + badge on same line, badge never drifts right */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-white text-sm font-medium leading-snug">{a.ingredient_name}</p>
+                          {(() => {
+                            const cat = a.item_type === 'recipe' ? 'Cocktail' : a.item_category;
+                            if (!cat) return null;
+                            const colour =
+                              cat === 'Cocktail'      ? 'bg-amber-500/20 text-amber-400' :
+                              cat === 'Spirit'        ? 'bg-teal-500/20 text-teal-400' :
+                              cat === 'Liqueur'       ? 'bg-purple-500/20 text-purple-400' :
+                              cat === 'Beer'          ? 'bg-yellow-500/20 text-yellow-400' :
+                              cat === 'Red'           ? 'bg-rose-500/20 text-rose-400' :
+                              cat === 'White'         ? 'bg-emerald-500/20 text-emerald-400' :
+                              cat === 'Rose'          ? 'bg-pink-500/20 text-pink-400' :
+                              cat.includes('Champagne') ? 'bg-sky-500/20 text-sky-300' :
+                              cat === 'Sparkling'     ? 'bg-blue-500/20 text-blue-300' :
+                              cat === 'Dessert'       ? 'bg-orange-500/20 text-orange-400' :
+                              'bg-zinc-500/20 text-zinc-400';
+                            return (
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full flex-shrink-0 ${colour}`}>
+                                {cat}
+                              </span>
+                            );
+                          })()}
                         </div>
-                        <p className="text-zinc-500 text-xs mt-0.5">
+                        <p className="text-zinc-500 text-xs mt-1">
                           {a.quantity_value} {a.quantity_unit.toUpperCase()}
                           {a.item_type !== 'recipe' && ` · ${Number(a.quantity_ml).toFixed(0)}ml`}
                           {a.item_type === 'recipe' && a.quantity_unit === 'ml' && ` · ${Number(a.quantity_ml).toFixed(0)}ml`}
@@ -557,7 +595,7 @@ export function StockAdjustmentsPage() {
                         </p>
                         {a.notes && <p className="text-zinc-600 text-xs mt-0.5 italic">{a.notes}</p>}
                       </div>
-                      <span className="text-zinc-600 text-xs shrink-0">{a.adjustment_date}</span>
+                      <span className="text-zinc-600 text-xs shrink-0 mt-0.5">{a.adjustment_date}</span>
                     </div>
                   </div>
                 ))
