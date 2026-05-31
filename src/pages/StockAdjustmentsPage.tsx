@@ -35,12 +35,14 @@ interface SearchResult {
   calculated_cost?: number;
   selling_price?: number;
   ingredients?: Array<{ name: string; amount: string }>;
+  isWine?: boolean;
 }
 
 interface Adjustment {
   id: string;
   type: string;
   item_type: string;
+  item_category?: string;
   ingredient_name: string;
   quantity_value: number;
   quantity_unit: string;
@@ -98,6 +100,7 @@ function ItemSearch({ onSelect, resetKey }: { onSelect: (item: SearchResult) => 
         id: w.id, name: w.wine, type: 'ingredient' as const,
         category: w.category, bottle_size: 750,
         unit_cost: w.cost_aed, cost_per_ml: w.cost_aed ? w.cost_aed / 750 : 0,
+        isWine: true,
       }));
       setResults([...ingredients, ...wines, ...recipes]);
       setOpen(true);
@@ -332,9 +335,11 @@ export function StockAdjustmentsPage() {
       type: 'wastage',
       item_type: wItem.type,
       outlet_id: wOutlet,
-      ingredient_id: wItem.type === 'ingredient' ? wItem.id : null,
+      ingredient_id: wItem.type === 'ingredient' && !wItem.isWine ? wItem.id : null,
+      wine_id: wItem.isWine ? wItem.id : null,
       recipe_id: wItem.type === 'recipe' ? wItem.id : null,
       ingredient_name: wItem.name,
+      item_category: wItem.category ?? null,
       quantity_value: parseFloat(wQty),
       quantity_unit: wUnit,
       quantity_ml: ml,
@@ -357,9 +362,11 @@ export function StockAdjustmentsPage() {
       item_type: tItem.type,
       outlet_from_id: tFrom,
       outlet_to_id: tTo,
-      ingredient_id: tItem.type === 'ingredient' ? tItem.id : null,
+      ingredient_id: tItem.type === 'ingredient' && !tItem.isWine ? tItem.id : null,
+      wine_id: tItem.isWine ? tItem.id : null,
       recipe_id: tItem.type === 'recipe' ? tItem.id : null,
       ingredient_name: tItem.name,
+      item_category: tItem.category ?? null,
       quantity_value: parseFloat(tQty),
       quantity_unit: tUnit,
       quantity_ml: ml,
@@ -524,6 +531,15 @@ export function StockAdjustmentsPage() {
                           <p className="text-white text-sm font-medium">{a.ingredient_name}</p>
                           {a.item_type === 'recipe' && (
                             <span className="text-xs px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-400">cocktail</span>
+                          )}
+                          {a.item_type === 'ingredient' && a.item_category && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                              a.item_category === 'Spirit' ? 'bg-amber-500/15 text-amber-400' :
+                              a.item_category === 'Liqueur' ? 'bg-purple-500/15 text-purple-400' :
+                              a.item_category === 'Beer' ? 'bg-yellow-500/15 text-yellow-400' :
+                              ['Red','White','Rose','Champagne','Sparkling'].includes(a.item_category) ? 'bg-blue-500/15 text-blue-400' :
+                              'bg-zinc-500/15 text-zinc-400'
+                            }`}>{a.item_category}</span>
                           )}
                         </div>
                         <p className="text-zinc-500 text-xs mt-0.5">
