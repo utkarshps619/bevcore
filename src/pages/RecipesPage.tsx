@@ -4,8 +4,13 @@ import { useUserOutlets } from '../hooks/useOutlets';
 import type { Recipe } from '../types';
 import { Wine, Plus, Search, X, CreditCard as Edit2, Trash2, DollarSign, RefreshCw, AlertCircle } from 'lucide-react';
 
+const RECIPE_TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'cocktail', label: 'Cocktails' },
+  { key: 'mocktail', label: 'Mocktails' },
+  { key: 'shot', label: 'Shots' },
+];
 const categories = ['cocktail', 'mocktail', 'shot', 'non-alcoholic'];
-
 interface RecipeWithCost extends Recipe {
   calculated_cost?: number | null;
   cost_coverage?: number | null;
@@ -574,13 +579,25 @@ export function RecipesPage() {
               ))}
             </select>
           )}
-          <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)} className="luxury-input w-auto min-w-[140px]">
-            <option value="all">All Categories</option>
-            {categories.map((cat) => (
-              <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
-            ))}
-          </select>
+
         </div>
+      </div>
+
+      {/* Tab switcher */}
+      <div className="flex gap-1 bg-[#111113] border border-[#1e1e21] rounded-xl p-1">
+        {RECIPE_TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setSelectedCategory(tab.key)}
+            className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              selectedCategory === tab.key
+                ? 'bg-amber-500 text-black'
+                : 'text-zinc-400 hover:text-white hover:bg-white/5'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {loading ? (
