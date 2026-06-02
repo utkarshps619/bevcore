@@ -14,6 +14,7 @@ import { PourCostDashboard } from './pages/PourCostDashboard';
 import VarianceDashboard from './pages/VarianceDashboard';
 import OpenItemCalculator from './pages/OpenItemCalculator';
 import { StockAdjustmentsPage } from './pages/StockAdjustmentsPage';
+import { MultiOutletDashboard } from './pages/MultiOutletDashboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -60,6 +61,7 @@ function AppRoutes() {
         <Route path="pour-cost" element={<PourCostDashboard />} />
         <Route path="stock-adjustments" element={<StockAdjustmentsPage />} />
         <Route path="variance" element={<VarianceDashboard />} />
+        <Route path="multi-outlet" element={<MultiOutletDashboard />} />
         <Route path="open-item" element={<OpenItemCalculator />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
