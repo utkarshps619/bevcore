@@ -208,10 +208,17 @@ export function MultiOutletDashboard() {
                     </div>
                     <div className="bg-[#0a0a0b] rounded-xl p-3">
                       <p className="text-xs text-zinc-500 mb-1">On Hand</p>
-                      <p className={`text-lg font-bold ${m.onHandMl < 0 ? 'text-rose-400' : 'text-white'}`}>
-                        {m.onHandMl < 0 ? '-' : ''}{Math.abs(m.onHandMl / 1000).toFixed(0)}L
-                      </p>
-                      <p className="text-xs text-zinc-600 mt-0.5">Open: {(m.openingStockMl / 1000).toFixed(0)}L</p>
+                      {m.onHandMl < 0 ? (
+                        <>
+                          <p className="text-sm font-semibold text-zinc-500">—</p>
+                          <p className="text-xs text-zinc-600 mt-0.5">Needs delivery data</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-lg font-bold text-white">{(m.onHandMl / 1000).toFixed(0)}L</p>
+                          <p className="text-xs text-zinc-600 mt-0.5">Open: {(m.openingStockMl / 1000).toFixed(0)}L</p>
+                        </>
+                      )}
                     </div>
                   </div>
 
@@ -311,17 +318,20 @@ export function MultiOutletDashboard() {
                       <div className="flex justify-between items-center mb-1.5">
                         <span className="text-sm text-zinc-300">{m.name}</span>
                         <span className="text-xs text-zinc-500">
-                          {(m.consumedMl / 1000).toFixed(0)}L / {(m.openingStockMl / 1000).toFixed(0)}L
+                          {(m.openingStockMl / 1000).toFixed(0)}L opening
                         </span>
                       </div>
                       <div className="h-2 bg-white/5 rounded-full overflow-hidden">
                         <div
                           className={`h-full ${c.bar} rounded-full`}
-                          style={{ width: `${Math.max(pctConsumed, 0)}%` }}
+                          style={{ width: `${Math.min(Math.max(pctConsumed, 0), 100)}%` }}
                         />
                       </div>
                       <p className="text-xs text-zinc-600 mt-0.5">
-                        {pctConsumed.toFixed(0)}% consumed · {Math.max(m.onHandMl / 1000, 0).toFixed(0)}L remaining
+                        {m.onHandMl < 0
+                          ? 'On-hand unavailable — May deliveries not yet recorded'
+                          : `${pctConsumed.toFixed(0)}% consumed · ${(m.onHandMl / 1000).toFixed(0)}L remaining`
+                        }
                       </p>
                     </div>
                   );
