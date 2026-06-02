@@ -17,6 +17,7 @@ import {
   TrendingDown,
   SlidersHorizontal,
   Calculator,
+  BarChart3,
 } from 'lucide-react';
 import { useUserOutlets } from '../hooks/useOutlets';
 
