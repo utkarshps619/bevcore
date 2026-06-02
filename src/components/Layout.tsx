@@ -31,6 +31,7 @@ const navigation = [
   { name: 'Import Ingredients', href: '/ingredient-import', icon: Upload },
   { name: 'Pour Cost', href: '/pour-cost', icon: TrendingUp },
   { name: 'Pour Cost Variance', href: '/variance', icon: TrendingDown },
+  { name: 'Multi-Outlet', href: '/multi-outlet', icon: BarChart3 },
   { name: 'Open Item Pricing', href: '/open-item', icon: Calculator },
   { name: 'Stock Adjustments', href: '/stock-adjustments', icon: SlidersHorizontal },
 ];
