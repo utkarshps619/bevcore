@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { TrendingUp, TrendingDown, Minus, AlertTriangle, BarChart3, Package, Trash2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, AlertTriangle, BarChart3, Package, Trash2, Wine } from 'lucide-react';
 
 const OUTLETS = [
   { id: 'b74408fc-3de1-4178-b643-947107c62364', name: 'Bull & Bear',   pos: 'BULL AND BEAR',   color: 'amber' },
@@ -32,10 +32,40 @@ interface OutletMetrics {
   transfersOut: number;
 }
 
+const WINE_BADGE: Record<string, string> = {
+  Red: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+  White: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  Rose: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
+  Champagne: 'bg-sky-500/10 text-sky-400 border-sky-500/20',
+  Sparkling: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+};
+
+function wineBadgeClass(category: string) {
+  return WINE_BADGE[category] || 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20';
+}
+
+function parseFormatMl(format: string | null): number {
+  if (!format) return 750;
+  const m = format.match(/([\d.]+)\s*(ml|cl|l)/i);
+  if (!m) return 750;
+  const val = parseFloat(m[1]);
+  const unit = m[2].toLowerCase();
+  if (unit === 'l') return val * 1000;
+  if (unit === 'cl') return val * 10;
+  return val;
+}
+
+interface WineStockSummary {
+  category: string;
+  bottles: number;
+  skus: number;
+}
+
 export function MultiOutletDashboard() {
   const [metrics, setMetrics] = useState<OutletMetrics[]>([]);
   const [loading, setLoading] = useState(true);
   const [topItems, setTopItems] = useState<any[]>([]);
+  const [wineStock, setWineStock] = useState<Record<string, WineStockSummary[]>>({});
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -149,6 +179,32 @@ export function MultiOutletDashboard() {
 
       const sorted = Object.values(ingMap).sort((a, b) => b.totalMl - a.totalMl).slice(0, 8);
       setTopItems(sorted);
+
+      // Wine stock breakdown per outlet
+      const { data: wineRows } = await supabase
+        .from('inventory_stock')
+        .select('outlet_id, on_hand_ml, wines(category, format)')
+        .not('wine_id', 'is', null);
+
+      const wineByOutlet: Record<string, Record<string, { bottles: number; skus: number }>> = {};
+      (wineRows ?? []).forEach((r: any) => {
+        const category = r.wines?.category ?? 'Other';
+        const bottleMl = parseFormatMl(r.wines?.format ?? null);
+        const bottles = bottleMl > 0 ? (r.on_hand_ml ?? 0) / bottleMl : 0;
+        if (!wineByOutlet[r.outlet_id]) wineByOutlet[r.outlet_id] = {};
+        if (!wineByOutlet[r.outlet_id][category]) wineByOutlet[r.outlet_id][category] = { bottles: 0, skus: 0 };
+        wineByOutlet[r.outlet_id][category].bottles += bottles;
+        wineByOutlet[r.outlet_id][category].skus += 1;
+      });
+
+      const wineSummary: Record<string, WineStockSummary[]> = {};
+      Object.entries(wineByOutlet).forEach(([outletId, cats]) => {
+        wineSummary[outletId] = Object.entries(cats)
+          .map(([category, v]) => ({ category, bottles: v.bottles, skus: v.skus }))
+          .sort((a, b) => b.bottles - a.bottles);
+      });
+      setWineStock(wineSummary);
+
       setLoading(false);
     };
 
@@ -365,6 +421,42 @@ export function MultiOutletDashboard() {
               )}
             </div>
           </div>
+
+          {/* Wine inventory by category */}
+          {Object.keys(wineStock).length > 0 && (
+            <div className="bg-[#111113] border border-[#1e1e21] rounded-2xl p-6">
+              <h2 className="text-white font-semibold mb-5 flex items-center gap-2">
+                <Wine className="h-4 w-4 text-amber-400" />
+                Wine Inventory by Category
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                {OUTLETS.map((o) => {
+                  const cats = wineStock[o.id] ?? [];
+                  return (
+                    <div key={o.id} className="bg-[#0a0a0b] rounded-xl p-4">
+                      <p className="text-sm text-zinc-300 font-medium mb-3">{o.name}</p>
+                      {cats.length === 0 ? (
+                        <p className="text-xs text-zinc-600">No wine stock loaded</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {cats.map((c) => (
+                            <div key={c.category} className="flex items-center justify-between">
+                              <span className={`text-xs px-2 py-0.5 rounded-full border ${wineBadgeClass(c.category)}`}>
+                                {c.category}
+                              </span>
+                              <span className="text-xs text-zinc-400 font-mono">
+                                {c.bottles.toFixed(0)} btl · {c.skus} SKUs
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Wastage summary across outlets */}
           {metrics.some(m => m.wastageCount > 0) && (

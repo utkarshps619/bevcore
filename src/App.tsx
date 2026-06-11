@@ -16,6 +16,9 @@ import OpenItemCalculator from './pages/OpenItemCalculator';
 import { StockAdjustmentsPage } from './pages/StockAdjustmentsPage';
 import { MultiOutletDashboard } from './pages/MultiOutletDashboard';
 import { DeliveriesPage } from './pages/DeliveriesPage';
+import { AIReportingPage } from './pages/AIReportingPage';
+import { StockCountPage } from './pages/StockCountPage';
+import { ShiftVariancePage } from './pages/ShiftVariancePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -65,6 +68,9 @@ function AppRoutes() {
         <Route path="variance" element={<VarianceDashboard />} />
         <Route path="multi-outlet" element={<MultiOutletDashboard />} />
         <Route path="open-item" element={<OpenItemCalculator />} />
+        <Route path="ai-reporting" element={<AIReportingPage />} />
+        <Route path="stock-count" element={<StockCountPage />} />
+        <Route path="shift-variance" element={<ShiftVariancePage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
