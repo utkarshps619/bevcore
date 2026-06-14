@@ -19,6 +19,9 @@ import {
   Calculator,
   BarChart3,
   Truck,
+  Sparkles,
+  ClipboardCheck,
+  Users,
 } from 'lucide-react';
 import { useUserOutlets } from '../hooks/useOutlets';
 
@@ -37,6 +40,9 @@ const navigation = [
   { name: 'Multi-Outlet', href: '/multi-outlet', icon: BarChart3 },
   { name: 'Open Item Pricing', href: '/open-item', icon: Calculator },
   { name: 'Stock Adjustments', href: '/stock-adjustments', icon: SlidersHorizontal },
+  { name: 'Stock Count', href: '/stock-count', icon: ClipboardCheck },
+  { name: 'Shift Variance', href: '/shift-variance', icon: Users },
+  { name: 'AI Reporting', href: '/ai-reporting', icon: Sparkles },
 ];
 
 const outletTypes = ['bar', 'restaurant', 'lounge', 'hotel bar', 'rooftop'];
@@ -154,6 +160,7 @@ export function Layout() {
           </div>
 
           {/* Navigation */}
+          <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
           <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
             {navigation.map((item) => (
               <NavLink
