@@ -1,10 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useUserOutlets } from '../hooks/useOutlets';
-import type { InventoryItem, ShiftNote, Recipe } from '../types';
+import type { ShiftNote } from '../types';
 import {
-  TrendingUp,
-  TrendingDown,
   Package,
   AlertTriangle,
   FileText,
@@ -18,30 +16,15 @@ interface KPICardProps {
   value: string | number;
   subtitle: string;
   icon: React.ReactNode;
-  trend?: { value: number; label: string };
 }
 
-function KPICard({ title, value, subtitle, icon, trend }: KPICardProps) {
+function KPICard({ title, value, subtitle, icon }: KPICardProps) {
   return (
     <div className="kpi-card">
       <div className="flex items-start justify-between mb-4">
         <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 flex items-center justify-center">
           {icon}
         </div>
-        {trend && (
-          <div
-            className={`flex items-center gap-1 text-xs font-medium ${
-              trend.value >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {trend.value >= 0 ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
-            {Math.abs(trend.value)}%
-          </div>
-        )}
       </div>
       <h3 className="text-sm font-medium text-zinc-400 mb-1">{title}</h3>
       <p className="text-2xl font-bold text-white mb-1">{value}</p>
@@ -50,40 +33,13 @@ function KPICard({ title, value, subtitle, icon, trend }: KPICardProps) {
   );
 }
 
-interface LowStockItemProps {
-  item: InventoryItem;
-}
-
-function LowStockItem({ item }: LowStockItemProps) {
-  const percentage = (item.quantity / item.par_level) * 100;
-  const statusColor =
-    percentage <= 10
-      ? 'bg-rose-500'
-      : percentage <= 25
-        ? 'bg-amber-500'
-        : 'bg-emerald-500';
-
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-[#1e1e21] last:border-0">
-      <div className="flex-1">
-        <p className="text-sm font-medium text-white">{item.name}</p>
-        <p className="text-xs text-zinc-500">
-          {item.quantity} / {item.par_level} {item.unit}
-        </p>
-      </div>
-      <div className="flex items-center gap-3">
-        <div className="w-24 h-2 bg-[#1a1a1d] rounded-full overflow-hidden">
-          <div
-            className={`h-full ${statusColor} transition-all`}
-            style={{ width: `${Math.min(percentage, 100)}%` }}
-          />
-        </div>
-        <span className="text-xs text-zinc-400 w-10 text-right">
-          {percentage.toFixed(0)}%
-        </span>
-      </div>
-    </div>
-  );
+interface StockItem {
+  outlet_id: string;
+  name: string;
+  category: string;
+  on_hand_units: number;
+  opening_units: number;
+  value_aed: number;
 }
 
 interface RecentShiftProps {
@@ -133,30 +89,68 @@ function RecentShift({ note }: RecentShiftProps) {
   );
 }
 
+function LowStockRow({ item }: { item: StockItem }) {
+  const percentage = item.opening_units > 0 ? (item.on_hand_units / item.opening_units) * 100 : 0;
+  const statusColor =
+    percentage <= 10 ? 'bg-rose-500' : percentage <= 25 ? 'bg-amber-500' : 'bg-emerald-500';
+
+  return (
+    <div className="flex items-center justify-between py-3 border-b border-[#1e1e21] last:border-0">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white truncate">{item.name}</p>
+        <p className="text-xs text-zinc-500">
+          {item.on_hand_units.toFixed(1)} / {item.opening_units.toFixed(1)} bottles
+        </p>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="w-24 h-2 bg-[#1a1a1d] rounded-full overflow-hidden">
+          <div
+            className={`h-full ${statusColor} transition-all`}
+            style={{ width: `${Math.min(Math.max(percentage, 0), 100)}%` }}
+          />
+        </div>
+        <span className="text-xs text-zinc-400 w-10 text-right">{percentage.toFixed(0)}%</span>
+      </div>
+    </div>
+  );
+}
+
+function parseFormatMl(format: string | null): number {
+  if (!format) return 750;
+  const m = format.match(/([\d.]+)\s*(ml|cl|l)/i);
+  if (!m) return 750;
+  const val = parseFloat(m[1]);
+  const unit = m[2].toLowerCase();
+  if (unit === 'l') return val * 1000;
+  if (unit === 'cl') return val * 10;
+  return val;
+}
+
 export function DashboardPage() {
   const { outlets, loading: outletsLoading } = useUserOutlets();
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [stockItems, setStockItems] = useState<StockItem[]>([]);
   const [shiftNotes, setShiftNotes] = useState<(ShiftNote & { outlets?: { name: string } })[]>([]);
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [recipeMargins, setRecipeMargins] = useState<{ outlet_id: string | null; margin: number }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchDashboardData() {
       if (outlets.length === 0) {
-        setInventory([]);
+        setStockItems([]);
         setShiftNotes([]);
-        setRecipes([]);
+        setRecipeMargins([]);
         setLoading(false);
         return;
       }
 
       const outletIds = outlets.map((o) => o.id);
 
-      const [inventoryRes, shiftsRes, recipesRes] = await Promise.all([
+      const [stockRes, shiftsRes, recipesRes] = await Promise.all([
         supabase
-          .from('inventory_items')
-          .select('*')
-          .in('outlet_id', outletIds),
+          .from('inventory_stock')
+          .select('outlet_id, on_hand_ml, opening_stock_ml, ingredient_id, wine_id, ingredients(name, category, unit_cost, bottle_size), wines(wine, category, cost_aed, format)')
+          .in('outlet_id', outletIds)
+          .gt('opening_stock_ml', 0),
         supabase
           .from('shift_notes')
           .select('*, outlets(name)')
@@ -165,13 +159,50 @@ export function DashboardPage() {
           .limit(5),
         supabase
           .from('recipes')
-          .select('*')
+          .select('outlet_id, selling_price, cost, calculated_cost')
           .in('outlet_id', outletIds),
       ]);
 
-      if (inventoryRes.data) setInventory(inventoryRes.data);
+      if (stockRes.data) {
+        const built: StockItem[] = stockRes.data.map((r: any) => {
+          if (r.ingredient_id && r.ingredients) {
+            const bottleMl = Number(r.ingredients.bottle_size) || 750;
+            const unitCost = Number(r.ingredients.unit_cost) || 0;
+            return {
+              outlet_id: r.outlet_id,
+              name: r.ingredients.name,
+              category: r.ingredients.category,
+              on_hand_units: (Number(r.on_hand_ml) || 0) / bottleMl,
+              opening_units: (Number(r.opening_stock_ml) || 0) / bottleMl,
+              value_aed: ((Number(r.on_hand_ml) || 0) / bottleMl) * unitCost,
+            };
+          }
+          const bottleMl = parseFormatMl(r.wines?.format ?? null);
+          const unitCost = Number(r.wines?.cost_aed) || 0;
+          return {
+            outlet_id: r.outlet_id,
+            name: r.wines?.wine ?? 'Unknown wine',
+            category: r.wines?.category ?? 'Wine',
+            on_hand_units: (Number(r.on_hand_ml) || 0) / bottleMl,
+            opening_units: (Number(r.opening_stock_ml) || 0) / bottleMl,
+            value_aed: ((Number(r.on_hand_ml) || 0) / bottleMl) * unitCost,
+          };
+        });
+        setStockItems(built);
+      }
+
       if (shiftsRes.data) setShiftNotes(shiftsRes.data);
-      if (recipesRes.data) setRecipes(recipesRes.data);
+
+      if (recipesRes.data) {
+        const margins = recipesRes.data
+          .filter((r: any) => r.selling_price > 0)
+          .map((r: any) => ({
+            outlet_id: r.outlet_id,
+            margin: ((r.selling_price - (r.calculated_cost ?? r.cost ?? 0)) / r.selling_price) * 100,
+          }));
+        setRecipeMargins(margins);
+      }
+
       setLoading(false);
     }
 
@@ -180,20 +211,16 @@ export function DashboardPage() {
     }
   }, [outlets, outletsLoading]);
 
-  const lowStockItems = inventory
-    .filter((item) => item.quantity <= item.par_level * 0.5)
-    .sort((a, b) => a.quantity / a.par_level - b.quantity / b.par_level)
+  const lowStockItems = stockItems
+    .filter((item) => item.opening_units > 0 && item.on_hand_units / item.opening_units <= 0.25)
+    .sort((a, b) => a.on_hand_units / a.opening_units - b.on_hand_units / b.opening_units)
     .slice(0, 5);
 
-  const totalInventoryValue = inventory.reduce(
-    (sum, item) => sum + item.quantity * item.cost_per_unit,
-    0
-  );
+  const totalInventoryValue = stockItems.reduce((sum, item) => sum + item.value_aed, 0);
 
   const avgRecipeMargin =
-    recipes.length > 0
-      ? recipes.reduce((sum, r) => sum + ((r.selling_price - r.cost) / r.selling_price) * 100, 0) /
-        recipes.length
+    recipeMargins.length > 0
+      ? recipeMargins.reduce((sum, r) => sum + r.margin, 0) / recipeMargins.length
       : 0;
 
   const isLoading = outletsLoading || loading;
@@ -212,6 +239,14 @@ export function DashboardPage() {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <div className="h-8 w-8 border-2 border-amber-500/20 border-t-amber-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Page header */}
@@ -225,27 +260,25 @@ export function DashboardPage() {
         <KPICard
           title="Total Inventory Value"
           value={`AED ${totalInventoryValue.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`}
-          subtitle="Current stock value"
+          subtitle="Current on-hand value"
           icon={<Package className="h-6 w-6 text-amber-400" />}
-          trend={{ value: 12.5, label: 'vs last month' }}
         />
         <KPICard
           title="Low Stock Items"
           value={lowStockItems.length}
-          subtitle="Items below par level"
+          subtitle="At or below 25% of opening stock"
           icon={<AlertTriangle className="h-6 w-6 text-amber-400" />}
         />
         <KPICard
           title="Recipe Margin"
           value={`${avgRecipeMargin.toFixed(1)}%`}
-          subtitle="Average profit margin"
+          subtitle="Average across costed recipes"
           icon={<DollarSign className="h-6 w-6 text-amber-400" />}
-          trend={{ value: 3.2, label: 'vs last month' }}
         />
         <KPICard
           title="Shift Reports"
           value={shiftNotes.length}
-          subtitle="This month"
+          subtitle="Most recent entries"
           icon={<FileText className="h-6 w-6 text-amber-400" />}
         />
       </div>
@@ -261,18 +294,16 @@ export function DashboardPage() {
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-white">Low Stock Alerts</h2>
-                <p className="text-xs text-zinc-500">Items requiring attention</p>
+                <p className="text-xs text-zinc-500">Items at or below 25% of opening stock</p>
               </div>
             </div>
             {lowStockItems.length > 0 && (
-              <span className="status-badge status-badge-error">
-                {lowStockItems.length} items
-              </span>
+              <span className="status-badge status-badge-error">{lowStockItems.length} items</span>
             )}
           </div>
 
           {lowStockItems.length > 0 ? (
-            <div>{lowStockItems.map((item) => <LowStockItem key={item.id} item={item} />)}</div>
+            <div>{lowStockItems.map((item, i) => <LowStockRow key={`${item.outlet_id}-${item.name}-${i}`} item={item} />)}</div>
           ) : (
             <div className="text-center py-8">
               <Package className="h-12 w-12 text-zinc-600 mx-auto mb-3" />
@@ -309,15 +340,12 @@ export function DashboardPage() {
         <h2 className="text-lg font-semibold text-white mb-4">Outlet Performance</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {outlets.map((outlet) => {
-            const outletInventory = inventory.filter((i) => i.outlet_id === outlet.id);
-            const outletRecipes = recipes.filter((r) => r.outlet_id === outlet.id);
-            const lowStockCount = outletInventory.filter(
-              (i) => i.quantity <= i.par_level * 0.5
+            const outletStock = stockItems.filter((i) => i.outlet_id === outlet.id);
+            const outletMargins = recipeMargins.filter((r) => r.outlet_id === outlet.id);
+            const lowStockCount = outletStock.filter(
+              (i) => i.opening_units > 0 && i.on_hand_units / i.opening_units <= 0.25
             ).length;
-            const totalValue = outletInventory.reduce(
-              (sum, i) => sum + i.quantity * i.cost_per_unit,
-              0
-            );
+            const totalValue = outletStock.reduce((sum, i) => sum + i.value_aed, 0);
 
             return (
               <div key={outlet.id} className="luxury-card hover:border-[#2e2e31] transition-colors">
@@ -337,11 +365,11 @@ export function DashboardPage() {
                 <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-xs text-zinc-500 mb-1">Items</p>
-                    <p className="text-xl font-bold text-white">{outletInventory.length}</p>
+                    <p className="text-xl font-bold text-white">{outletStock.length}</p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500 mb-1">Recipes</p>
-                    <p className="text-xl font-bold text-white">{outletRecipes.length}</p>
+                    <p className="text-xl font-bold text-white">{outletMargins.length}</p>
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500 mb-1">Value</p>
