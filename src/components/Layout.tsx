@@ -161,7 +161,6 @@ export function Layout() {
 
           {/* Navigation */}
           <nav className="flex-1 px-4 py-4 space-y-1 overflow-y-auto">
-          <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
             {navigation.map((item) => (
               <NavLink
                 key={item.name}
