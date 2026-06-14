@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone *)",
+      "mcp__46216224-73e2-4aee-a605-3d4e03620489__execute_sql",
+      "mcp__46216224-73e2-4aee-a605-3d4e03620489__apply_migration",
+      "Bash(find ~/Downloads -iname \"*opening*stock*\" -o -iname \"*opening stick*\" 2>/dev/null)",
+      "Bash(python3 -c ' *)",
+      "Bash(pip3 install *)",
+      "Bash(mkdir -p /tmp/wine_match)",
+      "Bash(cp \"/Users/utkarsh.singh/.claude/projects/-Users-utkarsh-singh-Desktop-BevCore/ba7b49d6-81b9-48ce-8bf0-21c43f707b0a/tool-results/mcp-46216224-73e2-4aee-a605-3d4e03620489-execute_sql-1781210375762.txt\" /tmp/wine_match/wines_raw.txt)",
+      "Bash(python3)"
+    ]
+  }
+}
